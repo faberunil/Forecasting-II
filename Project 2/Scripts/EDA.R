@@ -47,3 +47,15 @@ ts_data |>
   gg_season(mean.temperature.deg.C, labels = "both") +
   labs(y = "Temperature (°C)",
        title = "Daily Sea Surface Temperature")
+
+### STL Decomposition ###
+#########################
+
+dcmp <- ts_data |> model(STL(mean.temperature.deg.C)) 
+components(dcmp)
+
+# Plot the trend
+ts_data |> 
+  autoplot(mean.temperature.deg.C, color='gray') + autolayer(components(dcmp), trend, color='red') + xlab("Year") + ylab("Temperature (°C)") + ggtitle("Daily Sea Surface Temperature")
+
+
