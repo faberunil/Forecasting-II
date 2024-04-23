@@ -51,6 +51,7 @@ ts_data |>
 ### STL Decomposition ###
 #########################
 
+# STL decomp
 dcmp <- ts_data |> model(STL(mean.temperature.deg.C)) 
 components(dcmp)
 
@@ -58,4 +59,9 @@ components(dcmp)
 ts_data |> 
   autoplot(mean.temperature.deg.C, color='gray') + autolayer(components(dcmp), trend, color='red') + xlab("Year") + ylab("Temperature (°C)") + ggtitle("Daily Sea Surface Temperature")
 
+# Show all compononents of our time serie
+components(dcmp) %>% autoplot() + xlab("Year")
 
+# Plot season adjusted
+ts_data |>
+  autoplot(mean.temperature.deg.C, color='gray') + autolayer(components(dcmp), season_adjust, color='blue') + xlab("Year") + ylab("Temperature (°C)") + ggtitle("Daily Sea Surface Temperature")
