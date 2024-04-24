@@ -2,6 +2,7 @@
 library(here)
 library(readxl)
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 
 # Read the data using a path relative to the project root including the 'Project 2' folder
@@ -28,6 +29,33 @@ ggplot(vaud_data, aes(x = Date, y = value)) +
        y = "Number of Overnight Stays")
 
 # Calculate the distribution
+vaud_distribution <- vaud_data %>%
+  summarise(mean = mean(value, na.rm = TRUE), 
+            median = median(value, na.rm = TRUE), 
+            sd = sd(value, na.rm = TRUE)) %>%
+  pivot_longer(cols = everything(), names_to = "Statistic", values_to = "Value")
+
+# Plot the distribution
+# Density plot
+ggplot(vaud_data, aes(x = value)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  labs(title = "Density Plot of Overnight Stays in Vaud",
+       x = "Number of Overnight Stays",
+       y = "Density")
+
+# Boxplot
+ggplot(vaud_data, aes(x = "", y = value)) +
+  geom_boxplot(fill = "blue") +
+  labs(title = "Boxplot of Overnight Stays in Vaud",
+       x = "",
+       y = "Number of Overnight Stays")
+
+# Violin plot
+ggplot(vaud_data, aes(x = "", y = value)) +
+  geom_violin(fill = "blue") +
+  labs(title = "Violin Plot of Overnight Stays in Vaud",
+       x = "",
+       y = "Number of Overnight Stays")
 
 ################
 #### Luzern ####
@@ -50,3 +78,23 @@ ggplot(luzern_data, aes(x = Date, y = value)) +
        y = "Number of Overnight Stays")
 
 # Calculate the distribution
+# Density plot
+ggplot(luzern_data, aes(x = value)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  labs(title = "Density Plot of Overnight Stays in Luzern by Japanese Tourists",
+       x = "Number of Overnight Stays",
+       y = "Density")
+
+# Boxplot
+ggplot(luzern_data, aes(x = "", y = value)) +
+  geom_boxplot(fill = "blue") +
+  labs(title = "Boxplot of Overnight Stays in Luzern by Japanese Tourists",
+       x = "",
+       y = "Number of Overnight Stays")
+
+# Violin plot
+ggplot(luzern_data, aes(x = "", y = value)) +
+  geom_violin(fill = "blue") +
+  labs(title = "Violin Plot of Overnight Stays in Luzern by Japanese Tourists",
+       x = "",
+       y = "Number of Overnight Stays")
