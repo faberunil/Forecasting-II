@@ -1,0 +1,39 @@
+body {
+    font-size: 14px;
+}
+
+/* TOC styles */
+#TOC {
+    position: fixed; /* Fixed position on the side of the page */
+    right: 0;
+    top: 0;
+    width: 300px; /* Adjust width as needed */
+    max-height: 100vh;
+    overflow-y: auto;
+    background-color: #f8f9fa; /* Light background */
+    padding: 10px;
+    border-left: 1px solid #eaecef; /* Adding a border */
+}
+
+#TOC ul {
+    list-style-type: none; /* Removing default list styling */
+    padding: 0;
+}
+
+#TOC li {
+    margin-bottom: 5px;
+}
+
+#TOC a {
+    text-decoration: none; /* Removing underline from links */
+    color: #007bff; /* Link color */
+}
+
+#TOC a:hover {
+    text-decoration: underline; /* Underline on hover */
+}
+
+.center {
+    margin-left: auto;
+    margin-right: auto;
+}

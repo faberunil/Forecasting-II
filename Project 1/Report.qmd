@@ -1,0 +1,90 @@
+---
+title: "Forecasting II - Total Vaud Visitors & Japanese Visitors in Luzern"
+author: "Antoine Magnin Robin Michel Pierre Monari Ronald Medvedev and Faber Bickerstaffe"
+css: custom.css
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format:
+  html:
+    self-contained: true
+    number-sections: true
+    toc: true
+    toc-float:
+      collapsed: false
+      smooth-scroll: true
+      toc-headers: "h1, h2, h3"
+fig-responsive: false
+---
+```{r echo = FALSE, message = FALSE, warning=FALSE}
+# Load libraries
+library(here)
+library(knitr)
+library(ggplot2)
+
+# Load and run the data extraction script
+source(here("Project 1" ,"Scripts", "EDA.R"))
+```
+
+# Introduction
+
+The Swiss tourism industry plays a crucial role in the national economy, with regions like Vaud and Luzern attracting significant numbers of visitors due to their unique attractions and cultural significance. Accurate forecasting of overnight stays is vital for effective economic planning, resource management, and strategic marketing. This report undertakes a dual approach to forecasting, addressing both the general demand for accommodation in Vaud and the specific trends concerning visitors from Japan in Luzern.
+
+Part a) of the project focuses on predicting the total number of overnight stays in the canton of Vaud. This analysis aims to provide a broad understanding of tourism dynamics and assist local stakeholders in planning and decision-making processes. Part b) delves into a more detailed prediction for Luzern, focusing on overnight stays by Japanese tourists, a demographic that presents unique challenges due to specific preferences and travel behaviors.
+
+Through the application of ARIMA modeling—a method chosen for its effectiveness in handling non-stationary time series data with seasonal variations—this project not only aims to generate reliable forecasts but also to equip tourism operators and policymakers with the tools needed to enhance service delivery and optimize marketing strategies. The inclusion of confidence intervals in our predictions will further aid stakeholders in assessing risk and making informed decisions in a sector known for its volatility.
+
+# Data
+## Description
+
+The dataset provided comprises of `r nrow(data)` observations and `r ncol(data)`, detailing overnight stays across various cantons spanning from `r min(data$Jahr)` to `r max(data$Jahr)`. The dataset includes information from `r length(unique(data$Kanton))` different cantons and `r length(unique(data$Herkunftsland))-1` countries of origin. The columns, which include `r paste(colnames(data), collapse=", ")`, provide a comprehensive view of tourist overnight stays in Switzerland. Here are the roles and significance of each column:
+
+- **Herkunftsland**: Identifies the visitor's country of origin, critical for understanding international tourism trends.
+- **Kanton**: Indicates the canton where the stays were recorded, essential for regional analysis.
+- **Monat and Jahr**: Time indicators that help in time series forecasting.
+- **Value**: Represents the counted overnight stays, serving as the primary metric for our forecasts.
+
+Below is a random sample snapshot of the data to provide a tangible sense of the data structure:
+```{r, echo = FALSE, message = FALSE, warning=FALSE}
+# Display a sample of the data
+kable(sample_n(data, 5))
+```
+
+## Processing
+For part a) of the project, we focused on the Canton of Vaud, filtering the data for all overnight stays in this region. The inclusion of "Herkunftsland - Total" in the `Herkunftsland` column helped with the filtering as it provided a monthly total of visitors of all nationalities. We therefore filtered on the columns of `Kanton` and `Herkunftsland`. The data was then converted into a time series format, with the `Date` column created by combining the `Monat` and `Jahr` columns. This transformation enabled us to visualize trends and seasonality in the data, providing a foundation for our forecasting models.
+<details>
+```r
+# Filter data for Vaud
+vaud_data <- data |>
+  filter(Kanton == "Vaud", Herkunftsland == "Herkunftsland - Total")
+
+# Convert Monat and Jahr to a Date format for time series analysis
+vaud_data <- vaud_data |>
+  mutate(Date = as.Date(paste(Jahr, Monat, "1", sep="-"), "%Y-%B-%d")) |>
+  arrange(Date)  # Ensure data is in chronological order
+```
+</details>
+
+For part b) of the project, we focused on Luzern and Japanese visitors. filtering the data to isolate overnight stays by Japanese tourists in this region. "Japan" is a country value in the `Herkunftsland` column and therefore could be selected for filtering. Similar to part a), the data was converted into a time series format, with the `Date` column once again created by combining the `Monat` and `Jahr` columns. This transformation allowed us to explore specific trends and patterns related to Japanese visitors in Luzern.
+<details>
+```r
+# Filter data for Luzern
+luzern_data <- data |>
+  filter(Kanton == "Luzern", Herkunftsland == "Japan")
+
+# Convert Monat and Jahr to a Date format for time series analysis
+luzern_data <- luzern_data |>
+  mutate(Date = as.Date(paste(Jahr, Monat, "1", sep="-"), "%Y-%B-%d")) |>
+  arrange(Date)  # Ensure data is in chronological order
+```
+</details>
+
+## Analysis
+
+The average number of overnight stays per month across all regions is `r mean(data$value, na.rm = TRUE)`.
+The maximum number of overnight stays recorded in a single month was `r max(data$value, na.rm = TRUE)`.
+
+
+# Forecating Methodology
+
+# Results
+
+# Conclusion
