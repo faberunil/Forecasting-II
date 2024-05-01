@@ -9,11 +9,13 @@ library(fpp3)
 ### DATA ###
 ############
 
+### Atlantic data
+
 # Read the data using a path relative to the project root including the 'Project 2' folder
-data <- read.csv(here("Project 2", "Data", "seatemp.csv"), header = TRUE, skip = 2)
+atl_data <- read.csv(here("Project 2", "Data", "Atlantic sea.csv"), header = TRUE, skip = 6)
 
 # Convert the data frame to a tsibble
-ts_data <- data |>
+ts_data <- atl_data |>
   transform(Date = as.Date(paste(year, month, day, sep = "-"))) |>
   as_tsibble(index = Date)
 
