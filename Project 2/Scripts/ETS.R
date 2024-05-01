@@ -27,12 +27,12 @@ ts_atl <- atl_data |>
 ets_atl_fit <- ts_atl |> model(ETS(mean.temperature.deg.C))
 help(forecast)
 
-atl_fit <- ts_atl |> model(ETS(mean.temperature.deg.C ~ error("A") + trend("A") + season("A")))
+atl_fit <- ts_atl |> model(ETS(mean.temperature.deg.C ~ error("A") + trend("N") + season("M")))
 
 report(atl_fit)
 
 # Plot the forecast for the next N year
-atl_fit |> forecast(h = 100) |> autoplot(ts_atl)
+atl_fit |> forecast(h = 365) |> autoplot(ts_atl)
 
 # Model Accuracy
 atl_fit |> accuracy()

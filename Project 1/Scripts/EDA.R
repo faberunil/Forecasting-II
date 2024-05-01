@@ -4,9 +4,11 @@ library(readxl)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(tsibble)
 
 # Read the data using a path relative to the project root including the 'Project 2' folder
 data <- read_excel(here("Project 1", "Data", "Dataset_tourism.xlsx"))
+
 
 ##############
 #### Vaud ####
@@ -19,10 +21,22 @@ vaud_data <- data |>
 # Convert Monat and Jahr to a Date format for time series analysis
 vaud_data <- vaud_data |>
   mutate(Date = as.Date(paste(Jahr, Monat, "1", sep="-"), "%Y-%B-%d")) |>
-  arrange(Date)  # Ensure data is in chronological order
+  arrange(Date) |>  # Ensure data is in chronological order
+  as_tibble()  # Convert to tibble for easier manipulation
+
+# Create a tsibble
+month_conversion <- c("Januar" = "1", "Februar" = "2", "März" = "3", "April" = "4", 
+                      "Mai" = "5", "Juni" = "6", "Juli" = "7", "August" = "8",
+                      "September" = "9", "Oktober" = "10", "November" = "11", "Dezember" = "12")
+
+ts_vaud <- vaud_data |>
+  mutate(Monat = month_conversion[Monat]) |> # Convert month names to numbers
+  mutate(Month = yearmonth(paste(Jahr, Monat, sep = "-"))) |>
+  as_tsibble(index = Month)
+
 
 # Plotting the data to visualize trends and seasonality
-ggplot(vaud_data, aes(x = Date, y = value)) +
+ggplot(ts_vaud, aes(x = Date, y = value)) +
   geom_line() +
   labs(title = "Monthly Overnight Stays in Vaud",
        x = "Date",
@@ -56,6 +70,24 @@ ggplot(vaud_data, aes(x = "", y = value)) +
   labs(title = "Violin Plot of Overnight Stays in Vaud",
        x = "",
        y = "Number of Overnight Stays")
+
+### STL Decomposition ###
+#########################
+
+# STL decomp
+dcmp <- ts_vaud |> model(STL(value)) 
+components(dcmp)
+
+# Plot the trend
+ts_vaud |> 
+  autoplot(value, color='gray') + autolayer(components(dcmp), trend, color='red') + xlab("Year") + ylab("Temperature (°C)") + ggtitle("Daily Sea Surface Temperature")
+
+# Show all compononents of our time serie
+components(dcmp) %>% autoplot() + xlab("Year")
+
+# Plot season adjusted
+ts_data |>
+  autoplot(mean.temperature.deg.C, color='gray') + autolayer(components(dcmp), season_adjust, color='blue') + xlab("Year") + ylab("Temperature (°C)") + ggtitle("Daily Sea Surface Temperature")
 
 ################
 #### Luzern ####

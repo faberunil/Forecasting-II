@@ -2,7 +2,6 @@
 library(here)
 library(tsibble)
 library(ggplot2)
-install.packages("fpp3") 
 library(fpp3)
 
 
