@@ -5,6 +5,7 @@ library(here)
 library(tsibble)
 library(ggplot2)
 library(fpp3)
+library(dplyr)
 
 
 ### Atlantic - ETS Forecast ####
@@ -12,22 +13,28 @@ library(fpp3)
 
 #### Data preparation
 
-# Read the data 
+# Read the data
 atl_data <- read.csv(here("Project 2", "Data", "Atlantic sea.csv"), header = TRUE, skip = 6)
 
-# Convert the data frame to a tsibble
-ts_atl <- atl_data |>
-  transform(Date = as.Date(paste(year, month, day, sep = "-"))) |>
-  filter(Date >= "2000-01-01") |>
-  as_tsibble(index = Date)
+# Drop mean.temperature.uncertainty, and mean.temperature.kelvin columns
+atl_data <- subset(atl_data, select = -c(mean.temperature.uncertainty, mean.temperature.kelvin, day))
+
+# Calculate monthly mean temperature
+atl_data <- atl_data |>
+  group_by(year, month) |>
+  summarise(mean_temp = mean(mean.temperature.deg.C, na.rm = TRUE),
+            .groups = 'drop') |>
+  mutate(month_year = yearmonth(paste(year, month, sep = "-")))
+
+# Create a tsibble object
+ts_atl <- as_tsibble(atl_data, index = month_year)
 
 #### ETS Forecast
 
 # Fitting the ETS model
-ets_atl_fit <- ts_atl |> model(ETS(mean.temperature.deg.C))
-help(forecast)
+ets_atl_fit <- ts_atl |> model(ETS(mean_temp))
 
-atl_fit <- ts_atl |> model(ETS(mean.temperature.deg.C ~ error("A") + trend("N") + season("M")))
+atl_fit <- ts_atl |> model(ETS(mean_temp ~ error("A") + trend("A") + season("A")))
 
 report(atl_fit)
 
