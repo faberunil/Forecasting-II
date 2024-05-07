@@ -48,7 +48,6 @@ ets_atl_fit |> gg_tsresiduals(lag_max = 120)
 ### Gulf of Mexico - ETS Forecast ####
 ######################################
 
-
 #### Data preparation ####
 
 # Read the data
@@ -69,7 +68,7 @@ ts_gulf <- as_tsibble(gulf_data, index = month_year)
 
 #### ETS Forecast ####
 
-# Fitting ETS Auto Model : ETS(A, A, A)
+# Fitting ETS AAA Model : ETS(A, A, A)
 ets_gulf_fit <- ts_gulf |> model(ETS(mean_temp ~ error("A") + trend("A") + season("A")))
 report(ets_gulf_fit)
 
@@ -81,5 +80,4 @@ ets_gulf_fit |> accuracy()
 
 # Residuals of the model
 ets_gulf_fit |> gg_tsresiduals(lag_max = 120)
-
 
