@@ -31,8 +31,8 @@ ts_atl <- as_tsibble(atl_data, index = month_year)
 
 #### ETS Forecast ####
 
-# Fitting ETS Auto Model : ETS(M, Ad, A)
-ets_atl_fit <- ts_atl |> model(ETS(mean_temp))
+# Fitting ETS Model : ETS(M, A, A)
+ets_atl_fit <- ts_atl |> model(ETS(mean_temp ~ error("M") + trend("A") + season("A")))
 report(ets_atl_fit)
 
 # Plot the forecast for the next N year
@@ -68,12 +68,12 @@ ts_gulf <- as_tsibble(gulf_data, index = month_year)
 
 #### ETS Forecast ####
 
-# Fitting ETS AAA Model : ETS(A, A, A)
-ets_gulf_fit <- ts_gulf |> model(ETS(mean_temp ~ error("A") + trend("A") + season("A")))
+# Fitting ETS Model : ETS(M, A, A)
+ets_gulf_fit <- ts_gulf |> model(ETS(mean_temp ~ error("M") + trend("A") + season("A")))
 report(ets_gulf_fit)
 
 # Plot the forecast for the next N year
-ets_gulf_fit |> forecast(h = 120) |> autoplot(ts_gulf)
+ets_gulf_fit |> forecast(h = 60) |> autoplot(ts_gulf)
 
 # Model Accuracy
 ets_gulf_fit |> accuracy()
