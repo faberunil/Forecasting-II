@@ -70,6 +70,7 @@ ts_data |>
 
 ### Gulf of Mexico data ###
 ###########################
+
 # Read the data 
 gulf_data <- read.csv(here("Project 2", "Data", "Gulf of mexico.csv"), header = TRUE, skip = 6)
 
