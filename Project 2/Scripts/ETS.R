@@ -17,17 +17,16 @@ atl_data <- read.csv(here("Project 2", "Data", "Atlantic sea.csv"), header = TRU
 
 # Convert the data frame to a tsibble
 ts_atl <- atl_data |>
-  transform(Date = as.Date(paste(year, month, day, sep = "-"))) |>
-  filter(Date >= "2000-01-01") |>
-  as_tsibble(index = Date)
+  transform(Day = as.Date(paste(year, month, day, sep = "-"))) |>
+  filter(Day >= "2000-01-01") |>
+  as_tsibble(index = Day)
 
 #### ETS Forecast
 
 # Fitting the ETS model
 ets_atl_fit <- ts_atl |> model(ETS(mean.temperature.deg.C))
-help(forecast)
 
-atl_fit <- ts_atl |> model(ETS(mean.temperature.deg.C ~ error("A") + trend("N") + season("M")))
+atl_fit <- ts_atl |> model(ETS(mean.temperature.deg.C ~ error("A") + trend("A") + season("A")))
 
 report(atl_fit)
 
