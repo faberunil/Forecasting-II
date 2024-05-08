@@ -109,10 +109,7 @@ report(tslm_model)
 
 # Generate new data
 co2_new_data <- new_data(ts_merged, n = 120) %>%
-  mutate(mean_c02 = rep(last(ts_merged$mean_c02) * 1.01, each = 120))
-
-length(co2_new_data$mean_c02)
-length(ts_merged$mean_temp)
+  mutate(mean_c02 = rep(last(ts_merged$mean_c02) * 1.05, each = 120))
 
 # Forecast using the tslm_model
 forecasted_values <- forecast(tslm_model, new_data = co2_new_data) %>%
