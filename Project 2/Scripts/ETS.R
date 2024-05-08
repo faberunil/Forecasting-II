@@ -73,7 +73,7 @@ ets_gulf_fit <- ts_gulf |> model(ETS(mean_temp ~ error("M") + trend("A") + seaso
 report(ets_gulf_fit)
 
 # Plot the forecast for the next N year
-ets_gulf_fit |> forecast(h = 60) |> autoplot(ts_gulf)
+ets_gulf_fit |> forecast(h = 120) |> autoplot(ts_gulf)
 
 # Model Accuracy
 ets_gulf_fit |> accuracy()

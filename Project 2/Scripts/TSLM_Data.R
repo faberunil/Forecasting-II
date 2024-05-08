@@ -22,8 +22,8 @@ ts_C02 <- archive |> transform(Date = as.Date(paste(year, month, day, sep = "-")
   +     as_tsibble(index = Date)
 
 ** regression computation **
-
-library(forecast)
+  
+  library(forecast)
 data <- data.frame(TimeSeries1 = ts_Temperature, TimeSeries2 = ts_C02)
 model <- lm(TimeSeries1 ~ TimeSeries2, data = data)
 summary(model)
@@ -34,9 +34,9 @@ summary(model)
   labs(title = "Evolution of Time Series 1", x = "Date", y = "Temperature")
 
 
- **C02**
-
-ggplot(data, aes(x = data$TS2.month_year, y = TS2.mean_c02)) +
+**C02**
+  
+  ggplot(data, aes(x = data$TS2.month_year, y = TS2.mean_c02)) +
   geom_line() +
   labs(title = "Evolution of Time Series 2", x = "Date", y = "CO2 Concentration")
 
