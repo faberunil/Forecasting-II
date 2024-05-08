@@ -1,24 +1,83 @@
-library(ggplot2)
-library(dplyr)
+### Forecasting 2 - Project 2 ###
+#################################
 
-# Read the datasets
-temperature_df <- read.csv("ts_Temperature.csv")
-co2_df <- read.csv("ts_C02.csv")
+library(dplyr)
+library(ggplot2)
+library(zoo)
+library(lubridate)
+library(forecast)
+library(fpp3)
+
+### Atlantic - TSLM Forecast ####
+#################################
+
+#### Data preparation ####
+##########################
+
+# Read the data
+atl_data <- read.csv(here("Project 2", "Data", "Atlantic sea.csv"), header = TRUE, skip = 6)
+
+# Drop mean.temperature.uncertainty, and mean.temperature.kelvin columns
+atl_data <- subset(atl_data, select = -c(mean.temperature.uncertainty, mean.temperature.kelvin, day))
+
+# Calculate monthly mean temperature
+atl_data <- atl_data |>
+  group_by(year, month) |>
+  summarise(mean_temp = mean(mean.temperature.deg.C, na.rm = TRUE),
+            .groups = 'drop') |>
+  mutate(month_year = yearmonth(paste(year, month, sep = "-")))
+
+# Create a tsibble object
+ts_atl <- as_tsibble(atl_data, index = month_year)
+
+# Read the data
+co2_data <- read.csv(here("Project 2", "Data", "ts_C02.csv"), header = TRUE)
+
+co2_data <- co2_data |>
+  group_by(Year, Month) |>
+  mutate(month_year = yearmonth(paste(Year, Month, sep = "-")))
+
+# Create a tsibble object
+ts_co2 <- as_tsibble(co2_data, index = month_year)
 
 # Convert column names to lowercase for consistency
-names(temperature_df) <- tolower(names(temperature_df))
-names(co2_df) <- tolower(names(co2_df))
+names(ts_atl) <- tolower(names(ts_atl))
+names(ts_co2) <- tolower(names(ts_co2))
 
 # Merge the datasets on the 'month_year' column
-merged_df <- merge(temperature_df, co2_df, by = "month_year", suffixes = c("_temp", "_co2"))
+merged_df <- merge(ts_atl, ts_co2, by = "month_year", suffixes = c("_temp", "_co2"))
+ts_merged <- as_tsibble(merged_df, index = month_year)
 
-# Linear regression model
-model <- lm(mean_temp ~ mean_c02, data = merged_df)
+### EDA - CO2 emissions ###
+###########################
 
-# Summary of the model
-summary(model)
+# Plot the CO2 time series 
+ts_co2 |> autoplot(mean_c02, ylab = "CO2 Levels (ppm)", xlab = "Time") +
+  ggtitle("CO2 Levels Over Time") +
+  theme_minimal()
 
-# Plotting
+# Seasonal plot
+ts_co2 |>
+  gg_season(mean_c02, labels = "both") +
+  labs(y = "Temperature (°C)",
+       title = "Daily Sea Surface Temperature")
+
+# STL decomp
+co2_dcmp <- ts_co2 |> model(STL(mean_c02)) 
+components(co2_dcmp)
+
+# Show all compononents of our time serie
+components(co2_dcmp) %>% autoplot() + xlab("Year")
+
+# Plot the trend
+ts_co2 |> 
+  autoplot(mean_c02, color='gray') + autolayer(components(co2_dcmp), trend, color='red') + xlab("Year") + ylab("CO2 Levels") + ggtitle("Monthly CO2 Emissions")
+
+# Plot season adjusted
+ts_co2 |>
+  autoplot(mean_c02, color='gray') + autolayer(components(co2_dcmp), season_adjust, color='blue') + xlab("Year") + ylab("CO2 Levels") + ggtitle("Monthly CO2 Emissions")
+
+# Plotting relation between CO2 and Sea Temperature
 ggplot(merged_df, aes(x = mean_c02, y = mean_temp)) +
   geom_point() +
   geom_smooth(method = "lm", col = "red") +
@@ -26,8 +85,44 @@ ggplot(merged_df, aes(x = mean_c02, y = mean_temp)) +
        x = "Mean CO2 Levels", y = "Mean Temperature") +
   theme_minimal()
 
-### Plot of evolution of Temperature and C02 overtime ##
 
+### Correlation ###
+###################
+
+correlation <- cor(merged_df$mean_temp, merged_df$mean_c02, use = "complete.obs")  # Use complete.obs to handle missing values
+correlation
+
+### TSLM FORECAST ###
+#####################
+
+# Fit a TSLM with CO2 as a predictor
+tslm_model <- ts_merged |> model(TSLM(mean_temp ~ mean_c02))
+report(tslm_model)
+
+# Generate new data
+co2_new_data <- new_data(ts_merged, n = 120) %>%
+  mutate(mean_c02 = rep(last(ts_merged$mean_c02) * 1.01, each = 120))
+
+print(co2_new_data)
+length(co2_new_data$mean_c02)
+length(ts_merged$mean_temp)
+
+# Forecast using the tslm_model
+forecasted_values <- forecast(tslm_model, new_data = co2_new_data) %>%
+  as_fable(response = "mean_temp")
+
+# Plot the original data along with the forecast
+autoplot(ts_merged, mean_temp) +
+  autolayer(forecasted_values, mean_temp, series = "Forecasted") +
+  labs(title = "Forecasted Mean Temperature Based on CO2 Levels",
+       x = "Time", y = "Mean Temperature") +
+  theme_minimal()
+
+
+### EDA - CO2 emisssions and Sea Temperature ###
+################################################
+
+### Plot of evolution of Temperature and C02 overtime ##
 
 # Creating a date column for plotting
 merged_df$date <- as.Date(paste(merged_df$year_temp, merged_df$month_temp, "01", sep = "-"), "%Y-%m-%d")
@@ -45,23 +140,7 @@ ggplot(merged_df, aes(x = date)) +
   scale_color_manual(values = c("Temperature" = "blue", "CO2" = "red")) +
   theme_minimal()
 
-
-
-
-
-##Change over time###
-
-library(ggplot2)
-library(dplyr)
-library(zoo)
-
-# Read the datasets
-temperature_df <- read.csv("ts_Temperature.csv")
-co2_df <- read.csv("ts_C02.csv")
-
-# Convert column names to lowercase for consistency
-names(temperature_df) <- tolower(names(temperature_df))
-names(co2_df) <- tolower(names(co2_df))
+### Change over time ###
 
 # Calculate percentage changes
 merged_df <- merged_df %>%
@@ -71,8 +150,6 @@ merged_df <- merged_df %>%
     perc_change_co2 = 100 * (mean_c02 - lag(mean_c02, n = 1)) / lag(mean_c02, n = 1)
   )
 
-# Drop NA values that result from diff calculation
-merged_df <- na.omit(merged_df)
 
 # Plotting
 ggplot(merged_df, aes(x = date)) +
@@ -83,26 +160,7 @@ ggplot(merged_df, aes(x = date)) +
   scale_color_manual(values = c("Percentage Change in Temperature" = "blue", "Percentage Change in CO2" = "red")) +
   theme_minimal()
 
-
-
-
-
-##Seasonality##
-
-library(ggplot2)
-library(dplyr)
-library(lubridate)
-
-# Read the datasets
-temperature_df <- read.csv("ts_Temperature.csv")
-co2_df <- read.csv("ts_C02.csv")
-
-# Convert column names to lowercase for consistency
-names(temperature_df) <- tolower(names(temperature_df))
-names(co2_df) <- tolower(names(co2_df))
-
-# Create a date column for easier manipulation
-merged_df$date <- as.Date(paste(merged_df$year_temp, merged_df$month_temp, "01", sep = "-"), "%Y-%m-%d")
+### Seasonality ###
 
 # Extract month from date for seasonal decomposition
 merged_df$month <- month(merged_df$date, label = TRUE, abbr = FALSE)
@@ -129,27 +187,7 @@ ggplot(data = monthly_averages, aes(x = month)) +
   theme_minimal()
 
 
-
-
-
-
-###Monthly Comparaison###
-
-
-library(ggplot2)
-library(dplyr)
-library(lubridate)
-
-# Read the datasets
-temperature_df <- read.csv("ts_Temperature.csv")
-co2_df <- read.csv("ts_C02.csv")
-
-# Convert column names to lowercase for consistency
-names(temperature_df) <- tolower(names(temperature_df))
-names(co2_df) <- tolower(names(co2_df))
-
-# Create a date column for easier manipulation
-merged_df$date <- as.Date(paste(merged_df$year_temp, merged_df$month_temp, "01", sep = "-"), "%Y-%m-%d")
+### Monthly Comparaison ###
 
 # Extract month and year from date for plotting
 merged_df$month <- month(merged_df$date, label = TRUE, abbr = TRUE)
@@ -167,31 +205,7 @@ ggplot(merged_df, aes(x = month, group = year)) +
   theme(legend.position = "none")
 
 
-
-
-
-
-
-
-
-###Yearly Comparaison###
-
-
-library(ggplot2)
-library(dplyr)
-library(lubridate)
-
-# Read the datasets
-temperature_df <- read.csv("ts_Temperature.csv")
-co2_df <- read.csv("ts_C02.csv")
-
-# Convert column names to lowercase for consistency
-names(temperature_df) <- tolower(names(temperature_df))
-names(co2_df) <- tolower(names(co2_df))
-
-
-# Create a date column for easier manipulation
-merged_df$date <- as.Date(paste(merged_df$year_temp, merged_df$month_temp, "01", sep = "-"), "%Y-%m-%d")
+### Yearly Comparaison ###
 
 # Extract month and year from date for plotting
 merged_df$month <- month(merged_df$date, label = TRUE, abbr = TRUE)
@@ -220,21 +234,7 @@ ggplot(merged_df, aes(x = month)) +
 
 
 
-
-
-###Monthly Comparison of Temperature and C02 Levels Across Years###
-
-library(ggplot2)
-library(dplyr)
-library(lubridate)
-
-# Load the datasets
-temperature_df <- read.csv("ts_Temperature.csv")
-co2_df <- read.csv("ts_C02.csv")
-
-# Lowercase column names for consistency
-names(temperature_df) <- tolower(names(temperature_df))
-names(co2_df) <- tolower(names(co2_df))
+### Monthly Comparison of Temperature and C02 Levels Across Years ###
 
 # Merge datasets based on 'month_year' column
 merged_df <- merge(temperature_df, co2_df, by = "month_year", suffixes = c("_temp", "_co2"))
@@ -261,58 +261,36 @@ p <- ggplot(merged_df, aes(x = month)) +
 p + geom_smooth(aes(y = mean_temp), method = "loess", se = FALSE, color = "darkgray", size = 2) +
   geom_smooth(aes(y = mean_c02), method = "loess", se = FALSE, color = "black", size = 2)
 
-
-
-
-
-
 ### Correlation ###
-# Assuming merged_df is your dataframe with 'mean_temp' and 'mean_c02'
+
 correlation <- cor(merged_df$mean_temp, merged_df$mean_c02, use = "complete.obs")  # Use complete.obs to handle missing values
 
 print(paste("Correlation coefficient between temperature and CO2: ", correlation))
 
 
+### TSLM FORECAST ###
+#####################
 
-
-
-
-
-
-###TSLM FORECAST###
-
-
-
-library(forecast)
-library(dplyr)
-
-# Assuming you've already loaded and merged your data as 'merged_df'
 # Ensure the date column is formatted correctly
 merged_df$date <- as.Date(merged_df$date)
 
 # Create time series objects for temperature and CO2
-# Assuming monthly data starting from the earliest date in your dataset
 start_year <- min(format(merged_df$date, "%Y"))
 start_month <- min(format(merged_df$date, "%m"))
 
-temp_ts <- ts(merged_df$mean_temp, start = c(start_year, start_month), frequency = 12)
-co2_ts <- ts(merged_df$mean_c02, start = c(start_year, start_month), frequency = 12)
+ts_atl <- ts(merged_df$mean_temp, start = c(start_year, start_month), frequency = 12)
+ts_co2 <- ts(merged_df$mean_c02, start = c(start_year, start_month), frequency = 12)
 
 # Check the alignment and length
-print(paste("Length of temp_ts:", length(temp_ts)))
-print(paste("Length of co2_ts:", length(co2_ts)))
-
+print(paste("Length of temp_ts:", length(ts_atl)))
+print(paste("Length of co2_ts:", length(ts_co2)))
 
 # Fit a TSLM with CO2 as a predictor
-tslm_model <- tslm(temp_ts ~ co2_ts)
+tslm_model <- tslm(ts_atl ~ ts_co2)
 
 # Check the summary of the model
 summary(tslm_model)
 
-library(forecast)
-library(dplyr)
-
-# Example of estimating future CO2 levels
 # Calculate average yearly increase from historical data
 co2_increase_per_month <- mean(diff(merged_df$mean_c02))
 
@@ -325,11 +303,14 @@ future_co2 <- data.frame(co2_ts = seq(last_co2, by = co2_increase_per_month, len
 # Display future CO2 levels
 print(future_co2)
 
-
 # Forecast using the new CO2 levels
 forecast_tslm <- forecast(tslm_model, newdata = future_co2)
 
 # Plot the forecast
 plot(forecast_tslm, main = "Forecast of Temperature Based on Projected CO2 Levels", xlab = "Months", ylab = "Temperature")
+
+
+
+
 
 
