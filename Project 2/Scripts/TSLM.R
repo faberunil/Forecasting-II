@@ -1,6 +1,7 @@
 ### Forecasting 2 - Project 2 ###
 #################################
 
+library(here)
 library(dplyr)
 library(ggplot2)
 library(zoo)
@@ -59,8 +60,7 @@ ts_co2 |> autoplot(mean_c02, ylab = "CO2 Levels (ppm)", xlab = "Time") +
 # Seasonal plot
 ts_co2 |>
   gg_season(mean_c02, labels = "both") +
-  labs(y = "Temperature (°C)",
-       title = "Daily Sea Surface Temperature")
+  labs(y = "Monthly Mean CO2 Levels (ppm)", title = "Seasonal Plot of Monthly CO2 Levels")
 
 # STL decomp
 co2_dcmp <- ts_co2 |> model(STL(mean_c02)) 
@@ -77,15 +77,23 @@ ts_co2 |>
 ts_co2 |>
   autoplot(mean_c02, color='gray') + autolayer(components(co2_dcmp), season_adjust, color='blue') + xlab("Year") + ylab("CO2 Levels") + ggtitle("Monthly CO2 Emissions")
 
-# Plotting relation between CO2 and Sea Temperature
+### Plotting relation between CO2 and Sea Temperature ###
 ggplot(merged_df, aes(x = mean_c02, y = mean_temp)) +
   geom_point() +
   geom_smooth(method = "lm", col = "red") +
   labs(title = "Regression Analysis: Mean Temperature vs. Mean CO2 Levels",
-       x = "Mean CO2 Levels", y = "Mean Temperature") +
+       x = "Monthly Mean CO2 Levels", y = "Monthly Mean Temperature") +
   theme_minimal()
 
+### Change over time ###
 
+# Calculate percentage changes
+merged_df <- merged_df %>%
+  arrange(date) %>%
+  mutate(
+    perc_change_temp = 100 * (mean_temp - lag(mean_temp, n = 1)) / lag(mean_temp, n = 1),
+    perc_change_co2 = 100 * (mean_c02 - lag(mean_c02, n = 1)) / lag(mean_c02, n = 1)
+  )
 ### Correlation ###
 ###################
 
@@ -103,7 +111,6 @@ report(tslm_model)
 co2_new_data <- new_data(ts_merged, n = 120) %>%
   mutate(mean_c02 = rep(last(ts_merged$mean_c02) * 1.01, each = 120))
 
-print(co2_new_data)
 length(co2_new_data$mean_c02)
 length(ts_merged$mean_temp)
 
@@ -118,6 +125,8 @@ autoplot(ts_merged, mean_temp) +
        x = "Time", y = "Mean Temperature") +
   theme_minimal()
 
+####################################################################################################################
+####################################################################################################################
 
 ### EDA - CO2 emisssions and Sea Temperature ###
 ################################################
@@ -139,16 +148,6 @@ ggplot(merged_df, aes(x = date)) +
        x = "Time") +
   scale_color_manual(values = c("Temperature" = "blue", "CO2" = "red")) +
   theme_minimal()
-
-### Change over time ###
-
-# Calculate percentage changes
-merged_df <- merged_df %>%
-  arrange(date) %>%
-  mutate(
-    perc_change_temp = 100 * (mean_temp - lag(mean_temp, n = 1)) / lag(mean_temp, n = 1),
-    perc_change_co2 = 100 * (mean_c02 - lag(mean_c02, n = 1)) / lag(mean_c02, n = 1)
-  )
 
 
 # Plotting
