@@ -88,3 +88,8 @@ The maximum number of overnight stays recorded in a single month was `r max(data
 # Results
 
 # Conclusion
+
+# Appendix
+## Links
+- [Data Source](https://www.investing.com/currencies/chf-jpy-historical-data)
+- [Code Repository]()

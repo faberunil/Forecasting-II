@@ -9,7 +9,6 @@ library(tsibble)
 # Read the data using a path relative to the project root including the 'Project 2' folder
 data <- read_excel(here("Project 1", "Data", "Dataset_tourism.xlsx"))
 
-
 ##############
 #### Vaud ####
 ##############
@@ -43,10 +42,10 @@ ggplot(ts_vaud, aes(x = Date, y = value)) +
        y = "Number of Overnight Stays")
 
 # Calculate the distribution
-vaud_distribution <- vaud_data %>%
+vaud_distribution <- vaud_data |>
   summarise(mean = mean(value, na.rm = TRUE), 
             median = median(value, na.rm = TRUE), 
-            sd = sd(value, na.rm = TRUE)) %>%
+            sd = sd(value, na.rm = TRUE)) |>
   pivot_longer(cols = everything(), names_to = "Statistic", values_to = "Value")
 
 # Plot the distribution
@@ -80,14 +79,14 @@ components(dcmp)
 
 # Plot the trend
 ts_vaud |> 
-  autoplot(value, color='gray') + autolayer(components(dcmp), trend, color='red') + xlab("Year") + ylab("Temperature (°C)") + ggtitle("Daily Sea Surface Temperature")
+  autoplot(value, color='gray') + autolayer(components(dcmp), trend, color='red') + xlab("Year") + ylab("Temperature (°C)") + ggtitle("Trend")
 
 # Show all compononents of our time serie
-components(dcmp) %>% autoplot() + xlab("Year")
+components(dcmp) |> autoplot() + xlab("Year")
 
 # Plot season adjusted
-ts_data |>
-  autoplot(mean.temperature.deg.C, color='gray') + autolayer(components(dcmp), season_adjust, color='blue') + xlab("Year") + ylab("Temperature (°C)") + ggtitle("Daily Sea Surface Temperature")
+ts_vaud |>
+  autoplot(value, color='gray') + autolayer(components(dcmp), season_adjust, color='blue') + xlab("Year") + ylab("Value") + ggtitle("Value Seasonally Adjusted")
 
 ################
 #### Luzern ####
