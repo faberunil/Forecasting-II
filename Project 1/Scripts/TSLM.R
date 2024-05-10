@@ -97,7 +97,7 @@ covid <- ts(c(rep(0, max(0, start_covid - 1)),
             start = c(start_year, start_month), frequency = 12)
 
 # Fit a TSLM model
-model_fit <- tslm(value ~ JPY + trend + season + covid, data = ts_combined)
+model_fit <- tslm(value_ts ~ JPY_ts + season + covid, data = ts_combined)
 
 # Check model summary and diagnostics
 summary(model_fit)
@@ -116,6 +116,9 @@ ts_combined_full <- ts_combined_full |>
 ts_combined_full <- ts_combined_full |>
   select(Date, JPY, value, covid)
 
+# remove first data point
+ts_combined_full <- ts_combined_full[-1,]
+
 # predict the values for the unknown values
 ts_combined_full <- forecast(model_fit, new_data = ts_combined_full)
 
@@ -129,8 +132,6 @@ autoplot(ts_combined_full, value) +
   guides(colour = guide_legend(title = "Legend")) +
   theme(legend.position = "bottom")
 
-# Print the results
-print(results)
 # Model summary and diagnostics
 summary(model_fit)
 accuracy(model_fit)
