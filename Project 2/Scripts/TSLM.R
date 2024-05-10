@@ -177,18 +177,21 @@ scenario_data <- base_new_data %>%
   mutate(
     high_emission = last_co2_value * (1 + 0.04) ^ (seq_len(n()) / 12),
     moderate_emission = last_co2_value * (1 + 0.02) ^ (seq_len(n()) / 12),
-    low_emission = last_co2_value * (1 + 0.01) ^ (seq_len(n()) / 12)
+    low_emission = last_co2_value * (1 + 0.01) ^ (seq_len(n()) / 12),
+    decreasing_emission = last_co2_value * (1 + 0.003) ^ (seq_len(n()) / 12)  # Stabalise increase at 0.25%
   )
 
 # Forecast using the tslm_model for each scenario
 forecast_high <- forecast(tslm_model, new_data = mutate(base_new_data, mean_c02_lag10 = scenario_data$high_emission))
 forecast_moderate <- forecast(tslm_model, new_data = mutate(base_new_data, mean_c02_lag10 = scenario_data$moderate_emission))
 forecast_low <- forecast(tslm_model, new_data = mutate(base_new_data, mean_c02_lag10 = scenario_data$low_emission))
+forecast_decreasing <- forecast(tslm_model, new_data = mutate(base_new_data, mean_c02_lag10 = scenario_data$decreasing_emission))
 
 # Convert forecasts to fable for easy plotting
 forecast_high_fable <- as_fable(forecast_high, response = "mean_temp")
 forecast_moderate_fable <- as_fable(forecast_moderate, response = "mean_temp")
 forecast_low_fable <- as_fable(forecast_low, response = "mean_temp")
+forecast_decreasing_fable <- as_fable(forecast_decreasing, response = "mean_temp")
 
 # Plotting the forecasts
 ggplot(ts_merged, aes(x = month_year, y = mean_temp)) +
@@ -196,9 +199,11 @@ ggplot(ts_merged, aes(x = month_year, y = mean_temp)) +
   geom_line(data = forecast_high_fable, aes(y = .mean, color = "High Emission")) +
   geom_line(data = forecast_moderate_fable, aes(y = .mean, color = "Moderate Emission")) +
   geom_line(data = forecast_low_fable, aes(y = .mean, color = "Low Emission")) +
+  geom_line(data = forecast_decreasing_fable, aes(y = .mean, color = "Stable Emission")) +
   labs(title = "Forecasted Mean Temperature Based on Different CO2 Emission Scenarios",
        x = "Time", y = "Mean Temperature") +
-  scale_color_manual(values = c("Actual Data" = "black", "High Emission" = "red", "Moderate Emission" = "orange", "Low Emission" = "lightgreen"),
+  scale_color_manual(values = c("Actual Data" = "black", "High Emission" = "red", "Moderate Emission" = "orange", "Low Emission" = "lightgreen", "Stable Emission" = "blue"),
                      name = "Scenario") +
   theme_minimal() +
   guides(color = guide_legend(title = "Data Type"))
+
