@@ -8,6 +8,7 @@ library(zoo)
 library(lubridate)
 library(forecast)
 library(fpp3)
+library(fable)
 
 ### Atlantic - TSLM Forecast ####
 #################################
@@ -89,11 +90,42 @@ ggplot(merged_df, aes(x = mean_c02, y = mean_temp)) +
 
 # Calculate percentage changes
 merged_df <- merged_df %>%
-  arrange(date) %>%
+  arrange(month_year) %>%
   mutate(
     perc_change_temp = 100 * (mean_temp - lag(mean_temp, n = 1)) / lag(mean_temp, n = 1),
     perc_change_co2 = 100 * (mean_c02 - lag(mean_c02, n = 1)) / lag(mean_c02, n = 1)
   )
+
+# Reshape the data
+long_df <- merged_df %>%
+  pivot_longer(
+    cols = c(perc_change_temp, perc_change_co2),
+    names_to = "variable",
+    values_to = "perc_change"
+  )
+
+
+# Creating the plot
+ggplot(long_df, aes(x = month_year, y = perc_change, color = variable)) +
+  geom_line() +
+  scale_color_manual(values = c("perc_change_temp" = "blue", "perc_change_co2" = "red"),
+                     labels = c("Temperature Change", "CO2 Change"),
+                     name = "Change Type") +
+  labs(title = "Percentage Change Over Time of Temperature and CO2",
+       x = "Date", y = "Percentage Change (%)") +
+  theme_minimal() +
+  guides(color = guide_legend(title = "Variable"))
+
+### Scaled plot of both time series ###
+
+ggplot(ts_merged, aes(x = month_year)) +
+  geom_line(aes(y = mean_temp, color = "Temperature")) +
+  geom_line(aes(y = mean_c02 / max(mean_c02) * max(mean_temp), color = "Scaled CO2")) +
+  labs(title = "Sea Temperature and Scaled CO2 Emissions Over Time",
+       x = "Time", y = "Scaled Values",
+       color = "Variable") +
+  theme_minimal()
+
 ### Correlation ###
 ###################
 
@@ -103,11 +135,64 @@ correlation
 ### TSLM FORECAST ###
 #####################
 
-# Fit a TSLM with CO2 as a predictor
-tslm_model <- ts_merged |> model(TSLM(mean_temp ~ mean_c02))
+# Creating lagged CO2 variable
+ts_merged <- ts_merged %>%
+  mutate(mean_c02_lag10 = lag(mean_c02, 120))  
+
+# Fit a TSLM model with lagged CO2
+tslm_model <- ts_merged %>%
+  filter(!is.na(mean_c02_lag10)) %>%  # Remove NA entries that result from lagging
+  model(TSLM(mean_temp ~ mean_c02_lag10 + trend() + season()))
+
+# Report the model
 report(tslm_model)
 
-# Generate new data
+### Generate new data based on 3 scenarios 
+
+# Capture the last known CO2 value
+last_co2_value <- last(ts_merged$mean_c02_lag10)
+
+# Generate baseline new data
+base_new_data <- new_data(ts_merged, n = 120)
+
+# Capture the last known CO2 value from lagged data
+last_co2_value <- last(ts_merged$mean_c02_lag10)
+
+# Prepare scenario data - NOTE : actual avg. CO2 emissions increase was ~1.1% last year
+scenario_data <- base_new_data %>%
+  mutate(
+    high_emission = last_co2_value * (1 + 0.04) ^ (seq_len(n()) / 12),
+    moderate_emission = last_co2_value * (1 + 0.02) ^ (seq_len(n()) / 12),
+    low_emission = last_co2_value * (1 + 0.01) ^ (seq_len(n()) / 12)
+  )
+
+# Forecast using the tslm_model for each scenario
+forecast_high <- forecast(tslm_model, new_data = mutate(base_new_data, mean_c02_lag10 = scenario_data$high_emission))
+forecast_moderate <- forecast(tslm_model, new_data = mutate(base_new_data, mean_c02_lag10 = scenario_data$moderate_emission))
+forecast_low <- forecast(tslm_model, new_data = mutate(base_new_data, mean_c02_lag10 = scenario_data$low_emission))
+
+# Convert forecasts to fable for easy plotting
+forecast_high_fable <- as_fable(forecast_high, response = "mean_temp")
+forecast_moderate_fable <- as_fable(forecast_moderate, response = "mean_temp")
+forecast_low_fable <- as_fable(forecast_low, response = "mean_temp")
+
+# Plotting the forecasts
+ggplot(ts_merged, aes(x = month_year, y = mean_temp)) +
+  geom_line(aes(color = "Actual Data")) +
+  geom_line(data = forecast_high_fable, aes(y = .mean, color = "High Emission")) +
+  geom_line(data = forecast_moderate_fable, aes(y = .mean, color = "Moderate Emission")) +
+  geom_line(data = forecast_low_fable, aes(y = .mean, color = "Low Emission")) +
+  labs(title = "Forecasted Mean Temperature Based on Different CO2 Emission Scenarios",
+       x = "Time", y = "Mean Temperature") +
+  scale_color_manual(values = c("Actual Data" = "black", "High Emission" = "red", "Moderate Emission" = "orange", "Low Emission" = "lightgreen"),
+                     name = "Scenario") +
+  theme_minimal() +
+  guides(color = guide_legend(title = "Data Type"))
+
+############# TEST ####################
+#######################################
+
+# Optimistic scenario: 5% increase in CO2 levels
 co2_new_data <- new_data(ts_merged, n = 120) %>%
   mutate(mean_c02 = rep(last(ts_merged$mean_c02) * 1.05, each = 120))
 
