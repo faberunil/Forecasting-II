@@ -35,16 +35,14 @@ currency_ts <- as_tsibble(currency, index = Date)
 ##############
 #### Luzern ####
 ##############
-
-# Filter data for Vaud
-Luzern_data <- data |>
-  filter(Kanton == "Luzern", Herkunftsland == "Japan")
-
-
 # Create a tsibble
 month_conversion <- c("Januar" = "1", "Februar" = "2", "März" = "3", "April" = "4", 
                       "Mai" = "5", "Juni" = "6", "Juli" = "7", "August" = "8",
                       "September" = "9", "Oktober" = "10", "November" = "11", "Dezember" = "12")
+
+# Filter data for Vaud
+Luzern_data <- data |>
+  filter(Kanton == "Luzern", Herkunftsland == "Japan")
 
 ts_luz <- Luzern_data |>
   mutate(Monat = month_conversion[Monat]) |> # Convert month names to numbers
@@ -69,12 +67,15 @@ full_currency_forecast$JPY <- median(full_currency_forecast$JPY)
 currency_filts <- currency_ts |>
   filter(Date %in% ts_luz$Date)
 
-# create timeseries df with date, JPY from  currency_filts and value from ts_luz
-ts_combined <- ts_luz |>
-  left_join(currency_filts, by = "Date") |>
-  select(Date, value, JPY) |>
-  as_tsibble(index = Date)
+# filter currency data to only include same dates as ts_luz
+currency_filts <- currency_ts |>
+  filter(Date %in% ts_luz$Date)
 
+# Combining and cleaning data
+ts_combined <- ts_luz %>%
+  left_join(currency_filts, by = "Date") %>%
+  as_tsibble(index = Date)
+"
 # Determine start time for the ts object
 start_year <- year(min(ts_combined$Date))
 start_month <- month(min(ts_combined$Date))
@@ -95,12 +96,14 @@ covid <- ts(c(rep(0, max(0, start_covid - 1)),
               rep(1, max(0, end_covid - start_covid + 1)), 
               rep(0, total_length - end_covid)),
             start = c(start_year, start_month), frequency = 12)
+"
 
 # Fit a TSLM model
-model_fit <- tslm(value_ts ~ JPY_ts + season + covid, data = ts_combined)
+model_fit <- tslm(value ~ JPY + trend + season, data = ts_combined)
 
 # Check model summary and diagnostics
 summary(model_fit)
+accuracy(model_fit)
 
 # create a tsibble with all JPY values and all known value values, if there arent known values, fill with NA
 ts_combined_full <- full_currency_forecast |>
@@ -119,8 +122,12 @@ ts_combined_full <- ts_combined_full |>
 # remove first data point
 ts_combined_full <- ts_combined_full[-1,]
 
+# Ensure the Date column is treated as a Date object
+ts_combined_full <- ts_combined_full %>%
+  mutate(Date = as.Date(Date))
+
 # predict the values for the unknown values
-ts_combined_full <- forecast(model_fit, new_data = ts_combined_full)
+predictions <- forecast(model_fit, new_data = ts_combined_full)
 
 # Plot the results
 autoplot(ts_combined_full, value) +
