@@ -20,8 +20,7 @@ vaud_data <- data |>
 # Convert Monat and Jahr to a Date format for time series analysis
 vaud_data <- vaud_data |>
   mutate(Date = as.Date(paste(Jahr, Monat, "1", sep="-"), "%Y-%B-%d")) |>
-  arrange(Date) |>  # Ensure data is in chronological order
-  as_tibble()  # Convert to tibble for easier manipulation
+  arrange(Date)
 
 # Create a tsibble
 month_conversion <- c("Januar" = "1", "Februar" = "2", "März" = "3", "April" = "4", 
