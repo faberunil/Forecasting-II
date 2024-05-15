@@ -10,8 +10,6 @@ library(forecast)
 library(fpp3)
 library(fable)
 
-### Atlantic - TSLM Forecast ####
-#################################
 
 #### Data preparation ####
 ##########################
@@ -33,7 +31,7 @@ atl_data <- atl_data |>
 ts_atl <- as_tsibble(atl_data, index = month_year)
 
 # Read the data
-co2_data <- read.csv(here("Project 2", "Data", "ts_C02.csv"), header = TRUE)
+co2_data <- read.csv(here("Project 2", "Data", "CO2.csv"), header = TRUE)
 
 co2_data <- co2_data |>
   group_by(Year, Month) |>
@@ -43,8 +41,8 @@ co2_data <- co2_data |>
 ts_co2 <- as_tsibble(co2_data, index = month_year)
 
 # Convert column names to lowercase for consistency
-names(ts_atl) <- tolower(names(ts_atl))
 names(ts_co2) <- tolower(names(ts_co2))
+names(ts_atl) <- tolower(names(ts_atl))
 
 # Merge the datasets on the 'month_year' column
 merged_df <- merge(ts_atl, ts_co2, by = "month_year", suffixes = c("_temp", "_co2"))
@@ -146,6 +144,10 @@ ggplot(data = ts_merged, aes(x = month_year)) +
 correlation <- cor(merged_df$mean_temp, merged_df$mean_c02, use = "complete.obs")  # Use complete.obs to handle missing values
 correlation
 
+### Atlantic - TSLM Forecast ####
+#################################
+
+
 ### TSLM FORECAST ###
 #####################
 
@@ -161,7 +163,7 @@ tslm_model <- ts_merged %>%
 # Report the model
 report(tslm_model)
 
-### Generate new data based on 3 scenarios 
+### Generate new data based on 4 scenarios 
 
 # Capture the last known CO2 value
 last_co2_value <- last(ts_merged$mean_c02_lag10)
@@ -169,8 +171,6 @@ last_co2_value <- last(ts_merged$mean_c02_lag10)
 # Generate baseline new data
 base_new_data <- new_data(ts_merged, n = 120)
 
-# Capture the last known CO2 value from lagged data
-last_co2_value <- last(ts_merged$mean_c02_lag10)
 
 # Prepare scenario data - NOTE : actual avg. CO2 emissions increase was ~1.1% last year
 scenario_data <- base_new_data %>%
@@ -185,13 +185,13 @@ scenario_data <- base_new_data %>%
 forecast_high <- forecast(tslm_model, new_data = mutate(base_new_data, mean_c02_lag10 = scenario_data$high_emission))
 forecast_moderate <- forecast(tslm_model, new_data = mutate(base_new_data, mean_c02_lag10 = scenario_data$moderate_emission))
 forecast_low <- forecast(tslm_model, new_data = mutate(base_new_data, mean_c02_lag10 = scenario_data$low_emission))
-forecast_decreasing <- forecast(tslm_model, new_data = mutate(base_new_data, mean_c02_lag10 = scenario_data$decreasing_emission))
+forecast_stable <- forecast(tslm_model, new_data = mutate(base_new_data, mean_c02_lag10 = scenario_data$decreasing_emission))
 
 # Convert forecasts to fable for easy plotting
 forecast_high_fable <- as_fable(forecast_high, response = "mean_temp")
 forecast_moderate_fable <- as_fable(forecast_moderate, response = "mean_temp")
 forecast_low_fable <- as_fable(forecast_low, response = "mean_temp")
-forecast_decreasing_fable <- as_fable(forecast_decreasing, response = "mean_temp")
+forecast_stable_fable <- as_fable(forecast_stable, response = "mean_temp")
 
 # Plotting the forecasts
 ggplot(ts_merged, aes(x = month_year, y = mean_temp)) +
@@ -199,7 +199,93 @@ ggplot(ts_merged, aes(x = month_year, y = mean_temp)) +
   geom_line(data = forecast_high_fable, aes(y = .mean, color = "High Emission")) +
   geom_line(data = forecast_moderate_fable, aes(y = .mean, color = "Moderate Emission")) +
   geom_line(data = forecast_low_fable, aes(y = .mean, color = "Low Emission")) +
-  geom_line(data = forecast_decreasing_fable, aes(y = .mean, color = "Stable Emission")) +
+  geom_line(data = forecast_stable_fable, aes(y = .mean, color = "Stable Emission")) +
+  labs(title = "Forecasted Mean Temperature Based on Different CO2 Emission Scenarios",
+       x = "Time", y = "Mean Temperature") +
+  scale_color_manual(values = c("Actual Data" = "black", "High Emission" = "red", "Moderate Emission" = "orange", "Low Emission" = "lightgreen", "Stable Emission" = "blue"),
+                     name = "Scenario") +
+  theme_minimal() +
+  guides(color = guide_legend(title = "Data Type"))
+
+
+### Gulf - TSLM Forecast ####
+#############################
+
+# Read the data
+gulf_data <- read.csv(here("Project 2", "Data", "Gulf of mexico.csv"), header = TRUE, skip = 6)
+
+# Drop mean.temperature.uncertainty, and mean.temperature.kelvin columns
+gulf_data <- subset(gulf_data, select = -c(mean.temperature.uncertainty, mean.temperature.kelvin, day))
+
+# Calculate monthly mean temperature
+gulf_data <- gulf_data |>
+  group_by(year, month) |>
+  summarise(mean_temp = mean(mean.temperature.deg.C, na.rm = TRUE),
+            .groups = 'drop') |>
+  mutate(month_year = yearmonth(paste(year, month, sep = "-")))
+
+# Create a tsibble object
+ts_gulf <- as_tsibble(gulf_data, index = month_year)
+
+# Convert column names to lowercase for consistency
+names(ts_gulf) <- tolower(names(ts_gulf))
+
+# Merge the datasets on the 'month_year' column
+merged_gulf_df <- merge(ts_gulf, ts_co2, by = "month_year", suffixes = c("_temp", "_co2"))
+ts_merged_gulf <- as_tsibble(merged_gulf_df, index = month_year)
+
+
+### TSLM FORECAST ###
+#####################
+
+# Creating lagged CO2 variable
+ts_merged_gulf <- ts_merged_gulf %>%
+  mutate(mean_c02_lag10 = lag(mean_c02, 120))
+
+# Fit a TSLM model with lagged CO2 over 10 years
+tslm_model_gulf <- ts_merged_gulf %>%
+  filter(!is.na(mean_c02_lag10)) %>%  # Remove NA entries that result from lagging
+  model(TSLM(mean_temp ~ mean_c02_lag10 + trend() + season()))
+
+# Report the model
+report(tslm_model_gulf)
+
+### Generate new data based on 4 scenarios
+
+# Capture the last known CO2 value
+last_co2_value_gulf <- last(ts_merged_gulf$mean_c02_lag10)
+
+# Generate baseline new data
+base_new_data_gulf <- new_data(ts_merged_gulf, n = 120)
+
+# Prepare scenario data - NOTE : actual avg. CO2 emissions increase was ~1.1% last year
+scenario_data_gulf <- base_new_data_gulf %>%
+  mutate(
+    high_emission = last_co2_value_gulf * (1 + 0.04) ^ (seq_len(n()) / 12),
+    moderate_emission = last_co2_value_gulf * (1 + 0.02) ^ (seq_len(n()) / 12),
+    low_emission = last_co2_value_gulf * (1 + 0.01) ^ (seq_len(n()) / 12),
+    stable_emission = last_co2_value_gulf * (1 + 0.003) ^ (seq_len(n()) / 12)  # Stabalise increase at 0.25%
+  )
+
+# Forecast using the tslm_model for each scenario
+forecast_high_gulf <- forecast(tslm_model_gulf, new_data = mutate(base_new_data_gulf, mean_c02_lag10 = scenario_data_gulf$high_emission))
+forecast_moderate_gulf <- forecast(tslm_model_gulf, new_data = mutate(base_new_data_gulf, mean_c02_lag10 = scenario_data_gulf$moderate_emission))
+forecast_low_gulf <- forecast(tslm_model_gulf, new_data = mutate(base_new_data_gulf, mean_c02_lag10 = scenario_data_gulf$low_emission))
+forecast_stable_gulf <- forecast(tslm_model_gulf, new_data = mutate(base_new_data_gulf, mean_c02_lag10 = scenario_data_gulf$stable_emission))
+
+# Convert forecasts to fable for easy plotting
+forecast_high_fable_gulf <- as_fable(forecast_high_gulf, response = "mean_temp")
+forecast_moderate_fable_gulf <- as_fable(forecast_moderate_gulf, response = "mean_temp")
+forecast_low_fable_gulf <- as_fable(forecast_low_gulf, response = "mean_temp")
+forecast_stable_fable_gulf <- as_fable(forecast_stable_gulf, response = "mean_temp")
+
+# Plotting the forecasts
+ggplot(merged_gulf_df, aes(x = month_year, y = mean_temp)) +
+  geom_line(aes(color = "Actual Data")) +
+  geom_line(data = forecast_high_fable_gulf, aes(y = .mean, color = "High Emission")) +
+  geom_line(data = forecast_moderate_fable_gulf, aes(y = .mean, color = "Moderate Emission")) +
+  geom_line(data = forecast_low_fable_gulf, aes(y = .mean, color = "Low Emission")) +
+  geom_line(data = forecast_stable_fable_gulf, aes(y = .mean, color = "Stable Emission")) +
   labs(title = "Forecasted Mean Temperature Based on Different CO2 Emission Scenarios",
        x = "Time", y = "Mean Temperature") +
   scale_color_manual(values = c("Actual Data" = "black", "High Emission" = "red", "Moderate Emission" = "orange", "Low Emission" = "lightgreen", "Stable Emission" = "blue"),

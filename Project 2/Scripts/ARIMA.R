@@ -1,6 +1,8 @@
 ### Forecasting 2 - Project 2 ###
 #################################
 
+### !!! NOT USED IN THE PRESENTATION !!! ###
+
 library(here)
 library(tsibble)
 library(ggplot2)
@@ -60,7 +62,7 @@ gulf_data <- subset(gulf_data, select = -c(mean.temperature.uncertainty, mean.te
 # Calculate monthly mean temperature
 gulf_data <- gulf_data |>
   group_by(year, month) |>
-  summarise(mean.temperature.deg.C = mean(mean.temperature.deg.C, na.rm = TRUE),
+  summarise(mean_temp = mean(mean.temperature.deg.C, na.rm = TRUE),
             .groups = 'drop') |>
   mutate(month_year = yearmonth(paste(year, month, sep = "-")))
 
