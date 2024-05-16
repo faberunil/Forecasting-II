@@ -75,14 +75,14 @@ covidforecasts_vd <- Covid_fitvd |>
 
 # Plot the best forecasts
 autoplot(covidforecasts_vd) +
-  labs(title = "Best Fit Seasonal ARIMA Forecast Vaud", x = "Year", y = "Value") +
+  labs(title = "ARIMA with Covid Forecast Vaud", x = "Year", y = "Value") +
   theme_minimal()
 
 ##################################################################################
 #### Luzern ######################################################################
 ##################################################################################
 
-# Filter data for Vaud
+# Filter data
 Luzern_data <- data |>
   filter(Kanton == "Luzern", Herkunftsland == "Japan")
 
@@ -121,7 +121,6 @@ currency <- currency |>
   rename(Date = ï..Date)
 
 # Assuming currency$Date is already a Date class object
-currency$Date <- as.yearmon(currency$Date)
 currency$Date <- yearmonth(currency$Date)
 
 # Convert the data frame to a tsibble
@@ -213,5 +212,49 @@ autoplot(Covidforecasts) +
 #### metrics ######################################################################
 ##################################################################################
 
-AIC <- c(best_fit_vd$aic, Covid_fitvd$aic, best_fit_lz$aic, JPY_fit$aic, JPYCovid_fit$aic, Covid_fit$aic)
-print(AIC)
+# Calculate AIC, ME, and MASE for the best ARIMA model for Vaud
+summary_vd <- glance(best_fit_vd)
+accuracy_vd <- accuracy(best_fit_vd)
+aic_vd <- summary_vd$AIC
+mae_vd <- accuracy_vd$MAE
+mase_vd <- accuracy_vd$MASE
+
+# Calculate AIC, ME, and MASE for the COVID ARIMA model for Vaud
+summary_covid_vd <- glance(Covid_fitvd)
+accuracy_covid_vd <- accuracy(Covid_fitvd)
+aic_covid_vd <- summary_covid_vd$AIC
+mae_covid_vd <- accuracy_covid_vd$MAE
+mase_covid_vd <- accuracy_covid_vd$MASE
+
+# Calculate AIC, ME, and MASE for the best ARIMA model for Luzern
+summary_lz <- glance(best_fit_lz)
+accuracy_lz <- accuracy(best_fit_lz)
+aic_lz <- summary_lz$AIC
+mae_lz <- accuracy_lz$MAE
+mase_lz <- accuracy_lz$MASE
+
+# Calculate AIC, ME, and MASE for the ARIMA model with external regressor for Luzern
+summary_JPY_fit <- glance(JPY_fit)
+accuracy_JPY <- accuracy(JPY_fit)
+aic_JPY <- summary_JPY_fit$AIC
+mae_JPY <- accuracy_JPY$MAE
+mase_JPY <- accuracy_JPY$MASE
+
+# Calculate AIC, ME, and MASE for the COVID ARIMA model with external regressor for Luzern
+summary_JPYCovid_fit <- glance(JPYCovid_fit)
+accuracy_JPYCovid <- accuracy(JPYCovid_fit)
+aic_JPYCovid <- summary_JPYCovid_fit$AIC
+mae_JPYCovid <- accuracy_JPYCovid$MAE
+mase_JPYCovid <- accuracy_JPYCovid$MASE
+
+# Print all metrics
+metricsarima_df <- data.frame(
+  Model = c("Best Arima Vaud", "COVID Arima Vaud", "Best Arima Luzern", "JPY Arima Luzern", "JPY COVID Arima Luzern"),
+  AIC = c(aic_vd, aic_covid_vd, aic_lz, aic_JPY, aic_JPYCovid),
+  MAE = c(mae_vd, mae_covid_vd, mae_lz, mae_JPY, mae_JPYCovid),
+  MASE = c(mase_vd, mase_covid_vd, mase_lz, mase_JPY, mase_JPYCovid)
+)
+
+print(metricsarima_df)
+
+save(metricsarima_df, file = "Project 1/Data/metricsarima_df.rdata")
