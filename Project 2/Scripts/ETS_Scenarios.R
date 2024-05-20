@@ -62,10 +62,10 @@ optimistic_forecasts <- normal_forecasts %>%
 
 # Plot the scenarios
 ggplot(ts_atl, aes(x = month_year, y = mean_temp)) +
-  geom_line(color = "black", size = 1, aes(label = "Historical Data")) +
-  geom_line(data = normal_forecasts, aes(y = .mean, color = "Normal"), size = 0.5) +
-  geom_line(data = pessimistic_forecasts, aes(y = .mean, color = "Pessimistic"), size = 0.5) +
-  geom_line(data = optimistic_forecasts, aes(y = .mean, color = "Optimistic"), size = 0.5) +
+  geom_line(color = "black", size = 0.5, aes(label = "Historical Data")) +
+  geom_line(data = normal_forecasts, aes(y = .mean, color = "Normal"), size = 0.6) +
+  geom_line(data = pessimistic_forecasts, aes(y = .mean, color = "Pessimistic"), size = 0.6) +
+  geom_line(data = optimistic_forecasts, aes(y = .mean, color = "Optimistic"), size = 0.6) +
   scale_color_manual(values = c("Normal" = "blue", "Pessimistic" = "red", "Optimistic" = "green")) +
   labs(title = "Forecast of the Atlantic Sea Temperature with Different Scenarios",
        x = "Year", y = "Mean Temperature") +
@@ -130,10 +130,10 @@ optimistic_forecasts_gulf <- normal_forecasts_gulf %>%
 
 # Plot the scenarios
 ggplot(ts_gulf, aes(x = month_year, y = mean_temp)) +
-  geom_line(color = "black", size = 1, aes(label = "Historical Data")) +
-  geom_line(data = normal_forecasts_gulf, aes(y = .mean, color = "Normal"), size = 0.5) +
-  geom_line(data = pessimistic_forecasts_gulf, aes(y = .mean, color = "Pessimistic"), size = 0.5) +
-  geom_line(data = optimistic_forecasts_gulf, aes(y = .mean, color = "Optimistic"), size = 0.5) +
+  geom_line(color = "black", size = 0.5, aes(label = "Historical Data")) +
+  geom_line(data = normal_forecasts_gulf, aes(y = .mean, color = "Normal"), size = 0.6) +
+  geom_line(data = pessimistic_forecasts_gulf, aes(y = .mean, color = "Pessimistic"), size = 0.6) +
+  geom_line(data = optimistic_forecasts_gulf, aes(y = .mean, color = "Optimistic"), size = 0.6) +
   scale_color_manual(values = c("Normal" = "blue", "Pessimistic" = "red", "Optimistic" = "green")) +
   labs(title = "Forecast of the Gulf of Mexico Sea Temperature with Different Scenarios",
        x = "Year", y = "Mean Temperature") +

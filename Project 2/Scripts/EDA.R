@@ -31,7 +31,7 @@ ts_atl <- as_tsibble(atl_data, index = month_year)
 
 
 ### Timeseries plot
-ts_data |> autoplot(mean.temperature.deg.C) + ggtitle("Daily Sea Surface Temperature") + ylab("Temperature (°C)") + xlab("Time")
+ts_atl |> autoplot(mean_temp) + ggtitle("Daily Sea Surface Temperature") + ylab("Temperature (°C)") + xlab("Time")
 
 ### Seasonal plot
 
