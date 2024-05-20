@@ -8,6 +8,7 @@ library(fpp3)
 library(fable)
 library(purrr)
 library(fabletools)
+library(readr)
 
 
 # Read the data using a path relative to the project root including the 'Project 2' folder
@@ -74,9 +75,29 @@ covidforecasts_vd <- Covid_fitvd |>
   forecast(new_data = future_datesvd)
 
 # Plot the best forecasts
-autoplot(covidforecasts_vd) +
-  labs(title = "ARIMA with Covid Forecast Vaud", x = "Year", y = "Value") +
+covidforecasts_vd |> autoplot(ts_vaud) +
+  labs(title = "ARIMA Forecast for Vaud with Covid Impact", x = "Year", y = "Value") +
   theme_minimal()
+
+### SAVE CHOOSEN MODEL IN CSV ###
+
+sigma2 <- glance(Covid_fitvd) %>% pull(sigma2)
+
+covidforecasts_vd <- covidforecasts_vd |>
+  mutate(
+    Lower_interval = .mean - 1.96*sqrt(sigma2),
+    Upper_interval = .mean + 1.96*sqrt(sigma2)
+  )
+
+# turn covidforecasts_vd into a dataframe
+covidforecasts_vd <- as.data.frame(covidforecasts_vd)
+
+# take only the date, .mean, Lower_interval, Upper_interval columns (also rename .mean to value)
+covidforecasts_vd_csv <- covidforecasts_vd |>
+  select(Date, Forecast_Value = .mean, Lower_interval, Upper_interval)
+
+# Export forecast as a CSV file
+write_csv(covidforecasts_vd_csv, here("Project 1", "Data", "forecasts_vd.csv"))
 
 ##################################################################################
 #### Luzern ######################################################################
@@ -103,22 +124,21 @@ best_forecasts_lz <- best_fit_lz |>
   forecast(h = 15)
 
 # Plot the best forecasts
-autoplot(best_forecasts_lz) +
+best_forecasts_lz |> autoplot(ts_luz) +
   labs(title = "Best Fit Seasonal ARIMA Forecast Luzern", x = "Year", y = "Value") +
   theme_minimal()
 
 ##############
-#### Arima with x variable ####
+#### Arima with JPY  ####
 ##############
 currency <- read.csv(here("Project 1", "Data", "CHF_JPY_Data.csv"))
 
 # Clean currency data
 # Only Price and Date columns
 currency <- currency |>
-  select(ï..Date, Price) |>
-  mutate(ï..Date = as.Date(ï..Date, format = "%m/%d/%Y")) |>
-  rename(JPY = Price) |>
-  rename(Date = ï..Date)
+  select(Date, Price) |>
+  mutate(Date = as.Date(Date, format = "%m/%d/%Y")) |>
+  rename(JPY = Price)
 
 # Assuming currency$Date is already a Date class object
 currency$Date <- yearmonth(currency$Date)
@@ -162,11 +182,12 @@ forecasts <- JPY_fit |>
   forecast(new_data = future_dates)
 
 # Efficient plotting
-autoplot(forecasts) +
+forecasts |> autoplot(ts_luz) +
   labs(title = "ARIMA Forecast with Currency Data", x = "Date", y = "Value") +
   theme_minimal()
+
 ##############
-#### Arima with covid ####
+#### Arima with covid + JPY ####
 ##############
 # Create covid dummy for ts_combined
 Covidts_combined <- ts_combined |>
@@ -176,7 +197,7 @@ Covidts_combined <- ts_combined |>
 Covidfuture_dates <- future_dates |>
   mutate(covid = if_else(Date >= as.Date("2020-03-01") & Date <= as.Date("2021-03-31"), 1, 0))
 
-# Step 3: Fit the ARIMA model with the COVID dummy variable
+# Fit the ARIMA model with the COVID dummy variable
 JPYCovid_fit <- Covidts_combined |>
   model(
     ARIMA(value ~ JPY + covid + pdq(1, 0, 0) + PDQ(2, 1, 1))
@@ -187,9 +208,33 @@ JPYCovidforecasts <- JPYCovid_fit |>
   forecast(new_data = Covidfuture_dates)
 
 # Plotting the forecast with the historical data and COVID adjustments
-autoplot(JPYCovidforecasts) +
+JPYCovidforecasts |> autoplot(ts_luz) +
   labs(title = "ARIMA Forecast with Currency Data and COVID Impact", x = "Date", y = "Value") +
   theme_minimal()
+
+### SAVE CHOOSEN MODEL IN CSV ###
+
+sigma2jp <- glance(JPYCovid_fit) %>% pull(sigma2)
+
+JPYCovidforecasts <- JPYCovidforecasts |>
+  mutate(
+    Lower_interval = .mean - 1.96*sqrt(sigma2jp),
+    Upper_interval = .mean + 1.96*sqrt(sigma2jp)
+  )
+
+# turn covidforecasts_vd into a dataframe
+JPYCovidforecasts <- as.data.frame(JPYCovidforecasts)
+
+# take only the date, .mean, Lower_interval, Upper_interval columns (also rename .mean to value)
+JPYCovidforecasts_csv <- JPYCovidforecasts |>
+  select(Date, Forecast_Value = .mean, Lower_interval, Upper_interval)
+
+# set value under 0 to 0
+JPYCovidforecasts_csv <- JPYCovidforecasts_csv |>
+  mutate(across(where(is.numeric), ~if_else(. < 0, 0, .)))
+
+# Export forecast as a CSV file
+write_csv(JPYCovidforecasts_csv, here("Project 1", "Data", "forecasts_jplz.csv"))
 
 ##############
 #### Arima with Covid ####
@@ -249,7 +294,7 @@ mase_JPYCovid <- accuracy_JPYCovid$MASE
 
 # Print all metrics
 metricsarima_df <- data.frame(
-  Model = c("Best Arima Vaud", "COVID Arima Vaud", "Best Arima Luzern", "JPY Arima Luzern", "JPY COVID Arima Luzern"),
+  Model = c("Arima Vaud", "COVID Arima Vaud", "Arima Luzern", "JPY Arima Luzern", "JPY COVID Arima Luzern"),
   AIC = c(aic_vd, aic_covid_vd, aic_lz, aic_JPY, aic_JPYCovid),
   MAE = c(mae_vd, mae_covid_vd, mae_lz, mae_JPY, mae_JPYCovid),
   MASE = c(mase_vd, mase_covid_vd, mase_lz, mase_JPY, mase_JPYCovid)

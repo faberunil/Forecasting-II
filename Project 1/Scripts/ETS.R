@@ -14,6 +14,7 @@ data <- read_excel(here("Project 1", "Data", "Dataset_tourism.xlsx"))
 ##############
 #### Vaud ####
 ##############
+
 ##############
 ## ETS ANA (best)###
 ##############
@@ -70,6 +71,7 @@ print(summary_ANA_vaud)
 #################
 #ETS Grid Search#
 #################
+
 # Assuming 'ts_vaud' is your tsibble prepared as before
 # Specify the combinations of error, trend, and seasonal components you want to test
 components <- expand.grid(error = c("A", "M"), 
@@ -118,6 +120,7 @@ autoplot(best_forecast_vd) +
 #################
 #### Luzern ####
 #################
+
 # Filter data for Vaud
 Luzern_data <- data |>
   filter(Kanton == "Luzern", Herkunftsland == "Japan")
@@ -127,41 +130,9 @@ ts_luz <- Luzern_data |>
   mutate(Date = yearmonth(paste(Jahr, Monat, sep = "-"))) |>
   as_tsibble(index = Date)
 
-# Fit models for each combination using pmap
-models_lz <- components |>
-  mutate(model = pmap(list(error, trend, season), function(e, t, s) {
-    cat("Fitting model with error:", e, "trend:", t, "season:", s, "\n")  # Debug output
-    ts_luz |> 
-      model(ETS(value ~ error(e) + trend(t) + season(s)))
-  }))
-
-# Extract and bind the model summaries (including AIC for comparison)
-model_summaries_lz <- models_lz |>
-  mutate(summary = map(model, report)) |>
-  unnest(summary)
-
-model_summaries_lz <- models_lz |>
-  mutate(aic = map_dbl(model, ~ glance(.x)$AIC))
-
-# Assuming 'models' contains the ETS models and 'model_summaries' includes AIC values
-# Re-extract best model using direct indexing for clarity
-best_model_index_lz <- which.min(model_summaries_lz$aic)  # Find index of the minimum AIC
-best_model_lz<- model_summaries_lz$model[[best_model_index_lz]]  # Extract model using the index
-
-# Print the best model
-print(best_model_lz)
-# Now forecast using the best model
-best_forecast_lz <- forecast(best_model_lz, h = 12)# Forecast with the best model
-best_forecast_lz <- best_model_lz |>
-  forecast(h = 12)
-
-# Plot the forecast
-autoplot(best_forecast_lz) +
-  labs(title = "Best ETS Model Forecast for Luzern", x = "Month", y = "Predicted Values") +
-  theme_minimal()
 
 #################
-#### ETS ANA ####
+#### ETS MNM ####
 #################
 
 # Fitting the ETS model
@@ -211,23 +182,10 @@ aic_lzETS <- summary_MNM_lz$AIC
 mae_lzETS <- accuracy_lzETS$MAE
 mase_lzETS <- accuracy_lzETS$MASE
 
-# Calculate AIC, ME, and MASE for the best  model for Vaud
-summary_best_vd <- glance(best_model_vd)
-accuracy_best_vd <- accuracy(best_model_vd)
-aic_best_vd <- summary_best_vd$AIC
-mae_best_vd <- accuracy_best_vd$MAE
-mase_best_vd <- accuracy_best_vd$MASE
-
-# Calculate AIC, ME, and MASE for the best  model for Luzern
-summary_best_lz <- glance(best_model_lz)
-accuracy_best_lz <- accuracy(best_model_lz)
-aic_best_lz <- summary_best_lz$AIC
-mae_best_lz <- accuracy_best_lz$MAE
-mase_best_lz <- accuracy_best_lz$MASE
 
 # Create a summary table for the metrics
 metricsETS_df <- data.frame(
-  Model = c("ANA Vaud", "MNM Luzern"),
+  Model = c("ETS Vaud", "ETS Luzern"),
   AIC = c(aic_vdETS, aic_lzETS),
   MAE = c(mae_vdETS, mae_lzETS),
   MASE = c(mase_vdETS, mase_lzETS)

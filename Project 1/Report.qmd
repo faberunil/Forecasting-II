@@ -1,29 +1,68 @@
 ---
-title: "Forecasting II - Total Vaud Visitors & Japanese Visitors in Luzern"
-author: "Antoine Magnin Robin Michel Pierre Monari Ronald Medvedev and Faber Bickerstaffe"
-css: custom.css
-date: "`r format(Sys.time(), '%d %B, %Y')`"
-format:
-  html:
-    self-contained: true
-    number-sections: true
-    toc: true
-    toc-float:
-      collapsed: false
-      smooth-scroll: true
-      toc-headers: "h1, h2, h3"
-fig-responsive: false
+format: pdf
+date: "20.05.2024"  
+university: "University of Lausanne, HEC"
+course: "Forecasting 2"
+group: "Group 3"
+year: "2024"
+output:
+  pdf_document:
+    includes:
+      in_header: header.tex
+geometry: margin=1.5cm
+fontsize: 10pt
+header-includes:
+  - \usepackage{graphicx}
+  - \usepackage{mathptmx}  # Times New Roman font
+  - \newcommand{\coverTitle}[1]{\Huge\textbf{#1}\normalsize}
+  - \newcommand{\coverAuthor}[1]{\large\textit{#1}\normalsize}
+  - \newcommand{\coverInfo}[1]{\small\textbf{#1}\normalsize}
+  - \newcommand{\coverDate}[1]{\small{#1}\normalsize}
 ---
+
+\begin{titlepage}
+  \centering
+  \vspace*{1cm}
+  \includegraphics[width=5cm]{image/Logo_HEC_Lausanne.png}
+  \vspace*{1cm}
+
+  \coverTitle{Forecasting Tourism in Switzerland}
+  \vspace{1.5cm}
+  
+  \coverAuthor{Antoine Magnin, Robin Michel, Pierre Monari, Ronald Medvedev, and Faber Bickerstaffe}
+  \vspace{1.5cm}
+  
+  \coverInfo{University of Lausanne, HEC}
+  \vspace{0.5cm}
+  
+  \coverInfo{Forecasting 2}
+  \vspace{0.5cm}
+  
+  \coverInfo{2024}
+  \vspace{0.5cm}
+  
+  \coverInfo{Group 3}
+  \vspace{0.5cm}
+
+  \coverDate{20.05.2024}
+  \vfill
+  
+\end{titlepage}
+---
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+# loading all the necessary packages
+source("setup.R")
+```
+
 ```{r echo = FALSE, message = FALSE, warning=FALSE}
 # Load libraries
-library(here)
 library(knitr)
 library(ggplot2)
 library(readxl)
 library(dplyr)
 library(scales)
-library(RColorBrewer)
-library(scales)
+library(fpp3)
 # Load and run the data extraction script
 data <- read_excel(here("Project 1", "Data", "Dataset_tourism.xlsx"))
 ```
@@ -41,19 +80,26 @@ Through the application of various forecasting models this project not only aims
 
 The dataset provided comprises of `r nrow(data)` observations and `r ncol(data)` columns, detailing overnight stays across various cantons spanning from `r min(data$Jahr)` to `r max(data$Jahr)`. The dataset includes information from `r length(unique(data$Kanton))` different cantons and `r length(unique(data$Herkunftsland))-1` countries of origin. The columns, which include `r paste(colnames(data), collapse=", ")`, provide a comprehensive view of tourist overnight stays in Switzerland. Here are the roles and significance of each column:
 
-- **Herkunftsland**: Identifies the visitor's country of origin, critical for understanding international tourism trends.
-- **Kanton**: Indicates the canton where the stays were recorded, essential for regional analysis.
-- **Monat and Jahr**: Time indicators that help in time series forecasting.
-- **Value**: Represents the counted overnight stays, serving as the primary metric for our forecasts.
+- `Herkunftsland`: Identifies the visitor's country of origin, critical for understanding international tourism trends.
+- `Kanton`: Indicates the canton where the stays were recorded, essential for regional analysis.
+- `Monat and Jahr`: Time indicators that help in time series forecasting.
+- `Value`: Represents the counted overnight stays, serving as the primary metric for our forecasts.
 
-_In the appendix a random sample snapshot of the data can be found to provide a tangible sense of the data structure._
+In the appendix a random sample snapshot of the data can be found to provide a tangible sense of the data structure (see Appendix 1).
 
 ## Processing Data
 
 For part a) of the project, we focused on the Canton of Vaud, filtering the data for all overnight stays in this region. The inclusion of "Herkunftsland - Total" in the `Herkunftsland` column helped with the filtering as it provided a monthly total of visitors of all nationalities. We therefore filtered on the columns of `Kanton` and `Herkunftsland`. The data was then converted into a time series format, with the `Date` column created by combining the `Monat` and `Jahr` columns. This transformation enabled us to visualize trends and seasonality in the data, providing a foundation for our forecasting models.
 
-<details>
-```r
+For part b) of the project, we focused on Luzern and Japanese visitors, filtering the data to isolate overnight stays by Japanese tourists in this region. "Japan" is a country value in the `Herkunftsland` column and therefore could be selected for filtering. Similar to part a), the data was converted into a time series format, with the `Date` column once again created by combining the `Monat` and `Jahr` columns. This transformation allowed us to explore specific trends and patterns related to Japanese visitors in Luzern. To aid in the creation of the tsibbles for both parts of the project, we created a conversion table for the months in German to their numerical equivalent. This conversion was necessary for the correct ordering of the months in the time series data.
+
+
+## Analysis
+
+The analysis of the data involved visualizing the trends and seasonality in overnight stays for both Vaud and for Japanese tourists in Luzern. This visualization was essential for understanding the patterns in the data and identifying any anomalies or trends that could inform our forecasting models. The time series plots below provide a clear representation of the overnight stays in Vaud and Luzern, highlighting the seasonal variations and trends over time.
+
+```{r, echo = FALSE, message = FALSE, warning=FALSE, fig.width=8, fig.height=2, fig.align = 'center'}
+
 # Filter data for Vaud
 vaud_data <- data |>
   filter(Kanton == "Vaud", Herkunftsland == "Herkunftsland - Total")
@@ -61,94 +107,56 @@ vaud_data <- data |>
 # Convert Monat and Jahr to a Date format for time series analysis
 vaud_data <- vaud_data |>
   mutate(Date = as.Date(paste(Jahr, Monat, "1", sep="-"), "%Y-%B-%d")) |>
-  arrange(Date)  # Ensure data is in chronological order
-```
-</details>
+  arrange(Date)
 
-For part b) of the project, we focused on Luzern and Japanese visitors. filtering the data to isolate overnight stays by Japanese tourists in this region. "Japan" is a country value in the `Herkunftsland` column and therefore could be selected for filtering. Similar to part a), the data was converted into a time series format, with the `Date` column once again created by combining the `Monat` and `Jahr` columns. This transformation allowed us to explore specific trends and patterns related to Japanese visitors in Luzern.
-
-<details>
-```r
-# Filter data for Luzern
-luzern_data <- data |>
-  filter(Kanton == "Luzern", Herkunftsland == "Japan")
-
-# Convert Monat and Jahr to a Date format for time series analysis
-luzern_data <- luzern_data |>
-  mutate(Date = as.Date(paste(Jahr, Monat, "1", sep="-"), "%Y-%B-%d")) |>
-  arrange(Date)  # Ensure data is in chronological order
-```
-</details>
-
-To aid in the creation of the tsibbles for both parts of the project, we created a conversion table for the months in German to their numerical equivalent. This conversion was necessary for the correct ordering of the months in the time series data.
-
-<details>
-```r
 # Create a tsibble
 month_conversion <- c("Januar" = "1", "Februar" = "2", "März" = "3", "April" = "4", 
                       "Mai" = "5", "Juni" = "6", "Juli" = "7", "August" = "8",
                       "September" = "9", "Oktober" = "10", "November" = "11", "Dezember" = "12")
-```
-</details>
 
-## Analysis
+ts_vaud <- vaud_data |>
+  mutate(Monat = month_conversion[Monat]) |> # Convert month names to numbers
+  mutate(Month = yearmonth(paste(Jahr, Monat, sep = "-"))) |>
+  as_tsibble(index = Month)
 
-The analysis of the data involved visualizing the trends and seasonality in overnight stays for both Vaud and for Japanese tourists in Luzern. This visualization was crucial for understanding the patterns in the data and identifying any anomalies or trends that could inform our forecasting models. The time series plots below provide a clear representation of the overnight stays in Vaud and Luzern, highlighting the seasonal variations and trends over time.
+luzern_data <- data |>
+  filter(Kanton == "Luzern", Herkunftsland == "Japan")
 
-```{r, echo = FALSE, message = FALSE, warning=FALSE, fig.width=8, fig.height=3}
-filtered_df <- data %>%
-  filter(Herkunftsland == "Japan", Kanton == "Luzern")
+luzern_data <- luzern_data |> 
+  mutate(Date = as.Date(paste(Jahr, Monat, "1", sep="-"), "%Y-%B-%d")) |>
+  arrange(Date)
 
-month_map <- c(Januar = "01", Februar = "02", März = "03", April = "04", Mai = "05", Juni = "06", 
-               Juli = "07", August = "08", September = "09", Oktober = "10", November = "11", Dezember = "12")
+ts_luzern <- luzern_data |> 
+  mutate(Monat = month_conversion[Monat]) |> # Convert month names to numbers
+  mutate(Month = yearmonth(paste(Jahr, Monat, sep = "-"))) |>
+  as_tsibble(index = Month)
 
-filtered_df$Monat_num <- as.numeric(sapply(filtered_df$Monat, function(x) month_map[x]))
+# Convert tsibbles to regular tibbles before combining
+vaud_tibble <- as_tibble(ts_vaud) %>% mutate(Region = "Vaud (Total)")
+luzern_tibble <- as_tibble(ts_luzern) %>% mutate(Region = "Luzern (Japenese Tourists)")
 
-filtered_df$Date <- as.Date(paste(filtered_df$Jahr, filtered_df$Monat_num, "1", sep="-"), "%Y-%m-%d")
+# Combine data into one dataframe with an indicator for the region
+combined_data <- bind_rows(vaud_tibble, luzern_tibble)
 
-filtered_df_2 <- data %>%
-  filter(Kanton == "Vaud")
-
-month_map <- c(Januar = "01", Februar = "02", März = "03", April = "04", Mai = "05", Juni = "06", 
-               Juli = "07", August = "08", September = "09", Oktober = "10", November = "11", Dezember = "12")
-
-filtered_df_2$Monat_num <- as.numeric(sapply(filtered_df_2$Monat, function(x) month_map[x]))
-
-filtered_df_2$Date <- as.Date(paste(filtered_df_2$Jahr, filtered_df_2$Monat_num, "1", sep="-"), "%Y-%m-%d")
-# Combine the data frames
-combined_df <- bind_rows(
-  filtered_df %>% mutate(Region = "Luzern"),
-  filtered_df_2 %>% mutate(Region = "Vaud")
-)
-
-# Plot using ggplot2 with facet_wrap
-ggplot(data = combined_df, aes(x = Date, y = value)) +
-  geom_line(color = "#2C3E50", size = 1) +  
-  geom_point(color = "#E74C3C", size = 0.2, alpha = 0.7) +  
-  scale_x_date(labels = date_format("%Y-%b"), breaks = "6 month") + 
-  scale_y_continuous(labels = comma) + 
-  labs(title = "Monthly Overnight Stays Over the Years",
-       subtitle = "Analyzing trends of bookings by tourists",
-       x = "Date", y = "Number of Overnight Stays") +
+# Plotting the combined data with facet wrapping by Region
+ggplot(combined_data, aes(x = Month, y = value)) +
+  geom_line() +
+  facet_wrap(~Region, scales = "free_y") +
+  labs(title = "Monthly Overnight Stays",
+       x = "Date",
+       y = "Number of Overnight Stays") +
   theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold", hjust = 0.5),
-    plot.subtitle = element_text(face = "italic"),
-    axis.title.x = element_text(vjust = -0.2),
-    axis.title.y = element_text(vjust = 1.5),
-    panel.grid.minor = element_blank(),
-    axis.text.x = element_text(angle = 45, hjust = 1, size = 4),
-    legend.position = "none"  
-  ) +
-  facet_wrap(~Region, scales = "free_y")  # Faceting by region
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
 ```
-### Seasonal Peaks and Troughs
-- **Lucerne**: Seasonal peaks in overnight stays by Japanese tourists are observed in the summer months (June, July, August) and troughs in the winter months (January, February). 
-- **Vaud**: Similar seasonal peaks are observed for all tourists, indicating the popularity of the summer season and reduced interest in the winter, likely due to weather conditions and fewer attractions.
 
-### Annual Fluctuations
-- **Lucerne**: From 2005 to 2019, the peaks and troughs in overnight stays by Japanese tourists are regular, but the prominence of peaks has decreased since 2015 showing a downward trend, potentially relating to economic stress within Japan. The highest values of overnight stays by Japanese tourists were observed from 2005 to 2007 (17,000-19,000 overnight stays per year), followed by the decline.
-- **Vaud**: From 2005 to 2019, the number of overnight stays by all tourists gradually increases, especially after 2014, reaching peaks in 2018 and 2019 (around 3,000,000 overnight stays). This may indicate growing popularity of the region and improved tourist infrastructure.
+### Seasonality
+- `Luzern`: From 2005 to 2019, overnight stays by Japanese tourists exhibited a consistent pattern. Seasonal peaks in overnight stays by Japanese tourists are observed in the summer months (June, July, August) and troughs in the winter months (January, February). 
+- `Vaud`: Similar seasonal peaks are observed for all tourists, indicating the popularity of the summer season and reduced interest in the winter, likely due to weather conditions and fewer attractions.
+
+### Trend
+- `Luzern`: A downward trend has been evident since 2007, likely due to economic challenges in Japan. The highest values of overnight stays by Japanese tourists were observed from 2005 to 2007 (17,000-19,000 overnight stays per year), followed by the decline.
+- `Vaud`: From 2005 to 2019, the number of overnight stays by all tourists gradually increases, especially after 2014, reaching peaks in 2018 and 2019 (around 3,000,000 overnight stays). This may indicate growing popularity of the region and improved tourist infrastructure. (see Appendix 2)
 
 ### COVID-19 Pandemic
 - In 2020, the number of overnight stays dropped sharply to minimal levels in both regions. In Lucerne, annual overnight stays by Japanese tourists fell to less than 7,000, and in Vaud, the number dropped to around 1,500,000 for all tourists. This is attributed to global travel restrictions and a general decline in tourist activity.
@@ -157,42 +165,43 @@ ggplot(data = combined_df, aes(x = Date, y = value)) +
 
 # Forecating Methodology
 
-In forecasting the trends of tourist visits in the cantons of Vaud and Luzern, we compared the strengths of various statistical models to account for the intricate dynamics and seasonality inherent in tourism data. The selection of Exponential Smoothing State Space Model (ETS), Autoregressive Integrated Moving Average (ARIMA), ARIMA with dynamic regression, and Time Series Linear Model (TSLM) is predicated on their efficacy in handling data with distinct patterns and external influences:
+In forecasting the trends of tourist visits in the cantons of Vaud and Luzern, we compared the suitability of various statistical models to account for the intricate dynamics and seasonality inherent in tourism data. The selection of Exponential Smoothing State Space Model (ETS), Autoregressive Integrated Moving Average (ARIMA), ARIMA with dynamic regression, and Time Series Linear Model (TSLM) is predicated on their efficacy in handling data with distinct patterns and external influences:
 
-**ETS Models** are particularly adept at capturing seasonal variations and trends without assuming stationarity in the time series data. This makes ETS models highly suitable for our tourism data, where seasonal peaks and evolving trends are prominent due to varying tourist preferences and external economic conditions.
+`ETS Models` are particularly adept at capturing seasonal variations and trends without assuming stationarity in the time series data. This makes ETS models highly suitable for our tourism data, where seasonal peaks and evolving trends are prominent due to varying tourist preferences and external economic conditions.
 
-**ARIMA Models** are chosen for their flexibility in modeling a wide range of data behaviors through differencing, making them capable of stabilizing the non-stationary elements of our series. This model is robust in dealing with the autocorrelation within the data, allowing for precise short-term forecasts which can be crucial for operational planning in tourism management.
+`ARIMA Models` are chosen for their flexibility in modeling a wide range of data behaviors through differencing, making them capable of stabilizing the non-stationary elements of our series. This model is robust in dealing with the autocorrelation within the data, allowing for precise short-term forecasts which can be crucial for operational planning in tourism management.
 
-**ARIMA with Dynamic Regression** extends the basic ARIMA framework by incorporating exogenous variables, such as currency exchange rates and dummy variables for shock global events such as COVID19, which are presumed to influence tourist inflows. This approach is particularly useful for understanding and forecasting the impact of external economic factors on tourism, such as the _YEN vs CHF_ exchange rate's effect on Japanese visitors in Luzern.
+`ARIMA with Dynamic Regression` extends the basic ARIMA framework by incorporating exogenous variables, such as currency exchange rates and dummy variables for shock global events such as COVID19, which are presumed to influence tourist inflows. This approach is particularly useful for understanding and forecasting the impact of external economic factors on tourism, such as the _YEN vs CHF_ exchange rate's effect on Japanese visitors in Luzern.
 
-**TSLM** offers a regression-based approach tailored to time series data, allowing the inclusion of both seasonal dummies and trends within the model. It provides a structured way to incorporate multiple seasonal cycles and linear trends, making it invaluable for long-term strategic planning where understanding the impact of specific time events (like COVID19) is essential.
+`TSLM` offers a regression-based approach tailored to time series data, allowing the inclusion of both seasonal dummies and trends within the model. It provides a structured way to incorporate multiple seasonal cycles and linear trends, making it invaluable for long-term strategic planning where understanding the impact of specific time events (like COVID19) is essential.
 
 These models were chosen to address the specific challenges presented by the dataset, including the need to forecast accurately in the face of seasonal fluctuations, economic impacts, and unexpected global events. The following sections will detail the model configurations, and the rationale behind the choice of each modeling technique in the context of our objectives, and finally the selected model based off our chosen metric.
 
 ## ETS Model
 
-A gridsearch approach was used to identify the optimal ETS model for forecasting overnight stays in the cantons of Vaud and Luzern. The model selection process involved comparing the AIC values of different ETS models with varying error structures (additive (A), multiplicative (M)), trend structures (A, M, None (N)) and season components (A, M, N). The final ETS model was chosen based on the lowest AIC value, indicating the best fit to the data.
+An automatic approach was used to identify the optimal ETS model for forecasting overnight stays in the cantons of Vaud and Luzern. The model selection process involved comparing the AIC values of different ETS models with varying error structures (additive (A), multiplicative (M)), trend structures (A, M, None (N)) and season components (A, M, N). The final ETS model was chosen based on the lowest AIC value, indicating the best fit to the data.
 
-**VAUD Best ETS Model: ETS(A, N, A)**
-**LUZERN Best ETS Model: ETS(M, N, M)**
+`VAUD Best ETS Model: ETS(A, N, A)`
+
+`LUZERN Best ETS Model: ETS(M, N, M)`
 
 ## ARIMA & ARIMA with Dynamic Regression
 
-A stepwise approach was used to identify the optimal ARIMA model for forecasting overnight stays in the cantons of Vaud and Luzern. The model selection process involved identifying the optimal p, d, q, and PDQ parameters for the ARIMA model based on the AIC values. The final ARIMA model was chosen based on the lowest AIC value, indicating the best fit to the data.
+A stepwise approach was used to identify the optimal ARIMA model for forecasting overnight stays in the cantons of Vaud and Luzern. The model selection process involved identifying the optimal p, d, q, and P, D, Q parameters for the ARIMA model based on the AIC values. The final ARIMA model was chosen based on the lowest AIC value, indicating the best fit to the data.
 
-**VAUD Best ARIMA Model: ARIMA(1,0,1)(2,1,2)[12]**
+`VAUD Best ARIMA Model: ARIMA(1,0,1)(2,1,2)[12]`
 
 _Non-seasonal part: 1 autoregressive term, no differencing, and 1 moving average term. Seasonal part: 2 seasonal autoregressive terms, 1 order of seasonal differencing, and 2 seasonal moving average terms, all based on a yearly cycle (12 months)._
 
-**LUZERN Best ARIMA Model: ARIMA(1,0,0)(2,1,1)[12] w/ drift**
+`LUZERN Best ARIMA Model: ARIMA(1,0,0)(2,1,1)[12] w/ drift`
 
 _Non-seasonal part: 1 autoregressive term, no differencing, and no moving average terms. Seasonal part: 2 seasonal autoregressive terms, 1 order of seasonal differencing, and 1 seasonal moving average term, also based on a yearly cycle, with a linear trend (drift) over time._
 
-For the ARIMA with Dynamic Regression model, we took the best ARIMA model for each of the cantons and added exogenous variables, a dummy variable for **Covid** was added to both, and the **exchange rate** between the Japanese Yen and Swiss Franc (JPY/CHF) was also added to Luzern's ARIMA.
+For the ARIMA with Dynamic Regression model, we took the best ARIMA model for each of the two cantons. We added two exogenous variables, first, a dummy variable for `Covid`, and the `exchange rate` between the Japanese Yen and Swiss Franc (JPY/CHF) was added to Luzern's ARIMA.
 
 ## TSLM
 
-For TSLM a model was created for Luzern that included the exchange rate between the Japanese Yen and Swiss Franc (JPY/CHF) and a Covid dummy. The model was created using the following formula:
+For TSLM, a model that included the exchange rate between the Japanese Yen and Swiss Franc (JPY/CHF) and a Covid dummy was created for Luzern. The model was fitted using the following formula:
 
 $$
 value = JPY + covid + trend + season
@@ -202,44 +211,258 @@ $$
 
 The model selection process involved evaluating three key metrics listed below for each model. The chosen models demonstrated the lowest metric values and exhibited the most understandable and visual forecast.
 
-1. **AIC (Akaike Information Criterion)**: The AIC is a measure of the relative quality of a statistical model for a given set of data. It balances the complexity of the model against how well the model fits the data, penalizing excessive complexity to prevent overfitting.
-2. **MAE (Mean Absolute Error)**: MAE quantifies the average magnitude of the errors in a set of predictions, without considering their direction. It's a straightforward metric that provides a quick indication of predictive accuracy at the individual level.
-3. **MASE (Mean Absolute Scaled Error)**: MASE measures the accuracy of forecasts relative to a naive benchmark prediction, typically the naïve seasonal model. This scaling makes it an excellent choice for comparing forecast performance across different data scales and is particularly useful when dealing with seasonal variations.
+1. `AIC (Akaike Information Criterion)`: The AIC is a measure of the relative quality of a statistical model for a given set of data. It balances the complexity of the model against how well the model fits the data, penalizing excessive complexity to prevent overfitting.
+2. `MAE (Mean Absolute Error)`: MAE quantifies the average magnitude of the errors in a set of predictions, without considering their direction. It's a straightforward metric that provides a quick indication of predictive accuracy at the individual level.
+3. `MASE (Mean Absolute Scaled Error)`: MASE measures the accuracy of forecasts relative to a naive benchmark prediction, typically the naïve seasonal model. This scaling makes it an excellent choice for comparing forecast performance across different data scales and is particularly useful when dealing with seasonal variations.
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}  
+### Vaud Metrics
+
+For Vaud, the ARIMA with Dynamic Regression variable of a Covid dummy was selected as the best model based on the AIC, MAE, and MASE metrics.
+
+```{r, echo = FALSE, message = FALSE, warning=FALSE, fig.width=8, fig.height=2, fig.align = 'center'}
 # load Metrics.R
 source(here("Project 1", "Scripts", "Metrics.R"))
 kable(metrics_vaud)
 ```
 
-For Vaud, the ARIMA with Dynamic Regression variable of a Covid dummy was selected as the best model based on the AIC, MAE, and MASE metrics.
+### Luzern Metrics
+For Luzern, the results are not so clear, the ARIMA with Dynamic Regression variable of a Covid dummy and the exchange rate between the Japanese Yen and Swiss Franc (JPY/CHF) has the lowest AIC. However, the ARIMA with Dynamic Regression variable of a Covid dummy has the lowest MAE and MASE.
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}  
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=2,fig.align = 'center'}  
 kable(metrics_luzern)
 ```
 
-For Luzern, the results are not so clear, the ARIMA with Dynamic Regression variable of a Covid dummy and the exchange rate between the Japanese Yen and Swiss Franc (JPY/CHF) has the lowest AIC. However, the ARIMA with Dynamic Regression variable of a Covid dummy has the lowest MAE and MASE.
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-```
 # Results
 
 ## Vaud
 
 The ARIMA with Dynamic Regression model for Vaud forecasts a steady increase in overnight stays, with a strong recovery since the impact of Covid. The model captures the seasonal fluctuations and the overall upward trend in tourist visits, providing valuable insights for tourism management in Vaud.
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
+```{r, echo = FALSE, message = FALSE, warning=FALSE, fig.width=8, fig.height=2,fig.align = 'center'}
+# Filter data for Vaud
+vaud_data <- data |>
+  filter(Kanton == "Vaud", Herkunftsland == "Herkunftsland - Total")
 
+# Create a tsibble
+month_conversion <- c("Januar" = "1", "Februar" = "2", "März" = "3", "April" = "4", 
+                      "Mai" = "5", "Juni" = "6", "Juli" = "7", "August" = "8",
+                      "September" = "9", "Oktober" = "10", "November" = "11", "Dezember" = "12")
+
+ts_vaud <- vaud_data |>
+  mutate(Monat = month_conversion[Monat]) |> # Convert month names to numbers
+  mutate(Date = yearmonth(paste(Jahr, Monat, sep = "-"))) |>
+  as_tsibble(index = Date)
+
+Covidts_vd <- ts_vaud |>
+  mutate(Date = as.Date(Date, format = "%Y-%m-%d"),  # Ensure Date is correctly formatted
+         covid = if_else(Date >= as.Date("2020-03-01") & Date <= as.Date("2021-03-31"), 1, 0))
+
+Covidts_vd$Date <- yearmonth(Covidts_vd$Date)
+Covidts_vd <- as_tsibble(Covidts_vd, index = Date)
+
+# Fit the ARIMA model with the COVID dummy variable
+Covid_fitvd <- Covidts_vd |>
+  model(
+    ARIMA(value ~ covid + pdq(1, 0, 1) + PDQ(2, 1, 2))
+  )
+
+# Assuming future_dates is already defined and needs the COVID dummy
+future_datesvd <- new_data(Covidts_vd, n = 15) |>
+  mutate(covid = 0)  # Explicitly setting COVID dummy to 0 for the forecast period
+
+# Forecast using the best fit
+covidforecasts_vd <- Covid_fitvd |>
+  forecast(new_data = future_datesvd)
+
+# Plot the best forecasts
+covidforecasts_vd |> autoplot(ts_vaud) +
+  labs(title = "ARIMA Forecast for Vaud with Covid Impact", x = "Year", y = "Value") +
+  theme_minimal()
 ```
+## Luzern 
+
+The ARIMA with Dynamic Regression model, incorporating the dummy variable for COVID-19 and the exchange rate between the Japanese Yen and Swiss Franc, achieved the lowest AIC for predicting overnight stays by Japanese travelers in Lucerne. We chose this model, despite similar results across metrics, as using the exchange rate could enhance long-term forecast accuracy. The model forecasts a continuing downward trend. While the forecast displays negative values, these should be interpreted cautiously and considered as zero, indicating that the model predicts no overnight stays from Japanese tourists in Lucerne for certain months.
+
+```{r, echo = FALSE, message = FALSE, warning=FALSE, fig.width=8, fig.height=2,fig.align = 'center'}
+# Filter data
+Luzern_data <- data |>
+  filter(Kanton == "Luzern", Herkunftsland == "Japan")
+
+ts_luz <- Luzern_data |>
+  mutate(Monat = month_conversion[Monat]) |> # Convert month names to numbers
+  mutate(Date = yearmonth(paste(Jahr, Monat, sep = "-"))) |>
+  as_tsibble(index = Date)
+
+currency <- read.csv(here("Project 1", "Data", "CHF_JPY_Data.csv"))
+
+# Clean currency data
+# Only Price and Date columns
+currency <- currency |>
+  select(Date, Price) |>
+  mutate(Date = as.Date(Date, format = "%m/%d/%Y")) |>
+  rename(JPY = Price)
+
+# Assuming currency$Date is already a Date class object
+currency$Date <- yearmonth(currency$Date)
+
+# Convert the data frame to a tsibble
+currency_ts <- as_tsibble(currency, index = Date)
+
+# filter currency data to only include same dates as ts_luz
+currency_filts <- currency_ts |>
+  filter(Date %in% ts_luz$Date)
+
+# Combining and cleaning data
+ts_combined <- ts_luz |>
+  left_join(currency_filts, by = "Date") |>
+  as_tsibble(index = Date)
+
+# Create covid dummy for ts_combined
+Covidts_combined <- ts_combined |>
+  mutate(covid = if_else(Date >= as.Date("2020-03-01") & Date <= as.Date("2021-03-31"), 1, 0))
+
+# Simplifying the forecast and preparation process
+currency_forecast <- currency_ts |>
+  model(ARIMA(JPY)) |>
+  forecast(h = 7)
+
+# Combine, ensure median is calculated correctly
+full_currency_forecast <- bind_rows(currency_ts, as_tibble(currency_forecast)) |>
+  mutate(
+    JPY = median(JPY, na.rm = TRUE),
+  )
+
+# Preparing future data for forecasting
+future_dates <- new_data(ts_combined, n = 15) |>
+  left_join(full_currency_forecast |> select(Date, JPY), by = "Date") |>
+  as_tsibble(index = Date)
+
+# Create the COVID-19 dummy for the future dates
+Covidfuture_dates <- future_dates |>
+  mutate(covid = if_else(Date >= as.Date("2020-03-01") & Date <= as.Date("2021-03-31"), 1, 0))
+
+# Fit the ARIMA model with the COVID dummy variable
+JPYCovid_fit <- Covidts_combined |>
+  model(
+    ARIMA(value ~ JPY + covid + pdq(1, 0, 0) + PDQ(2, 1, 1))
+  )
+
+# Forecast using the model with new data that includes the COVID dummy
+JPYCovidforecasts <- JPYCovid_fit |>
+  forecast(new_data = Covidfuture_dates)
+
+# Plotting the forecast with the historical data and COVID adjustments
+JPYCovidforecasts |> autoplot(ts_luz) +
+  labs(title = "ARIMA Forecast with Currency Data and COVID Impact", x = "Date", y = "Value") +
+  theme_minimal()
+```
+Note : From this forecast, negative values should be interpreted as zero, indicating that the model predicts no overnight stays from Japanese tourists in Lucerne for those months.
+
 # Conclusion
+
+The results of our analysis present a mixed outlook. For tourism in Vaud, the trend appears positive, with forecasts indicating a steady recovery to pre-COVID levels. This suggests a strong rebound in tourist activity, aligning with the observed upward trend in overnight stays. On the other hand, the forecast for Japanese tourists in Lucerne shows a declining trend. This downturn, exacerbated by the significant appreciation of the Swiss Franc against the Japanese Yen, suggests that travel to Switzerland has become more expensive for Japanese tourists, likely contributing to the predicted decrease in overnight stays.
+
+Our findings also underscore the value of incorporating external factors into our models. The ARIMA with Dynamic Regression model, enhanced with a COVID-19 dummy variable for Vaud and both the COVID-19 dummy and exchange rate for Lucerne, consistently outperformed other models. This highlights the importance of external variables in improving forecast accuracy. Future work could further enhance these models by including additional external variables such as weather conditions, public holidays, and other relevant factors. As demonstrated, integrating these variables could significantly improve the quality of forecasts, providing more reliable insights for tourism management and strategic planning.
 
 # Appendix
 
-## Data Sample
-```{r, echo = FALSE, message = FALSE, warning=FALSE}
+## Appendix 1 - Sample Data
+```{r, echo = FALSE, message = FALSE, warning=FALSE,fig.align = 'center'}
+set.seed(123)
 # Display a sample of the data
 kable(sample_n(data, 5))
 ```
+
+## Appendix 2 - STL Decomposition of Luzern and Vaud
+
+```{r, echo = FALSE, message = FALSE, warning=FALSE, fig.width=8, fig.height=5,fig.align = 'center'}
+
+# Filter data
+Luzern_data <- data |>
+  filter(Kanton == "Luzern", Herkunftsland == "Japan")
+
+ts_luz <- Luzern_data |>
+  mutate(Monat = month_conversion[Monat]) |> # Convert month names to numbers
+  mutate(Date = yearmonth(paste(Jahr, Monat, sep = "-"))) |>
+  as_tsibble(index = Date)
+
+# Filter data for Vaud
+vaud_data <- data |>
+  filter(Kanton == "Vaud", Herkunftsland == "Herkunftsland - Total")
+
+# Convert Monat and Jahr to a Date format for time series analysis
+vaud_data <- vaud_data |>
+  mutate(Date = as.Date(paste(Jahr, Monat, "1", sep="-"), "%Y-%B-%d")) |>
+  arrange(Date)
+
+# Create a tsibble
+month_conversion <- c("Januar" = "1", "Februar" = "2", "März" = "3", "April" = "4", 
+                      "Mai" = "5", "Juni" = "6", "Juli" = "7", "August" = "8",
+                      "September" = "9", "Oktober" = "10", "November" = "11", "Dezember" = "12")
+
+ts_vaud <- vaud_data |>
+  mutate(Monat = month_conversion[Monat]) |> # Convert month names to numbers
+  mutate(Month = yearmonth(paste(Jahr, Monat, sep = "-"))) |>
+  as_tsibble(index = Month)
+
+# Decompose Vaud data and extract components
+dcmp_vaud <- ts_vaud %>%
+  model(STL(value)) %>%
+  components() %>%
+  mutate(Region = "Vaud")
+
+# Decompose Luzern data and extract components
+dcmp_luzern <- ts_luzern %>%
+  model(STL(value)) %>%
+  components() %>%
+  mutate(Region = "Luzern")
+
+dcmp_vaud <- as_tibble(dcmp_vaud)
+dcmp_luzern <- as_tibble(dcmp_luzern)
+
+# Combine the component data
+combined_components <- bind_rows(dcmp_vaud, dcmp_luzern) %>%
+  pivot_longer(cols = c(value, trend, season_year, remainder), names_to = "Component", values_to = "Value")
+
+# Plot the results with facet wrapping, each with its own y-scale
+ggplot(combined_components, aes(x = Month, y = Value)) +
+  geom_line() +
+  facet_wrap(~ Component + Region, scales = "free_y", ncol = 2) +  # Flexible layout with free y-scales
+  labs(title = "STL Decomposition of Monthly Overnight Stays",
+       x = "Year",
+       y = "Component Value") +
+  theme_minimal()
+```
+
+## Appendix 3 - Exchange Rate JPY vs CHF
+
+```{r, echo = FALSE, message = FALSE, warning=FALSE,fig.align = 'center'}
+# Currency plot
+currency <- read.csv(here("Project 1", "Data", "CHF_JPY_Data.csv"))
+
+# Clean currency data
+# Only Price and Date columns
+currency <- currency |>
+  select(Date, Price) |>
+  mutate(Date = as.Date(Date, format = "%m/%d/%Y")) |>
+  rename(JPY = Price)
+
+# Assuming currency$Date is already a Date class object
+currency$Date <- yearmonth(currency$Date)
+
+# Convert the data frame to a tsibble
+currency_ts <- as_tsibble(currency, index = Date)
+
+# Plot the currency data
+ggplot(currency_ts, aes(x = Date, y = JPY)) +
+  geom_line() +
+  labs(title = "JPY to CHF Exchange Rate",
+       x = "Year",
+       y = "JPY to CHF Exchange Rate") +
+  theme_minimal()
+```
+
 
 ## Links
 - [Data Source - chf/jpy](https://www.investing.com/currencies/chf-jpy-historical-data)

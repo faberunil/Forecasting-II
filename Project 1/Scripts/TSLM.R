@@ -32,9 +32,10 @@ currency$Date <- yearmonth(currency$Date)
 # Convert the data frame to a tsibble
 currency_ts <- as_tsibble(currency, index = Date)
 
-##############
+################
 #### Luzern ####
-##############
+################
+
 # Create a tsibble
 month_conversion <- c("Januar" = "1", "Februar" = "2", "März" = "3", "April" = "4", 
                       "Mai" = "5", "Juni" = "6", "Juli" = "7", "August" = "8",
