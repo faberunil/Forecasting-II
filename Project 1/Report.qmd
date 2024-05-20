@@ -46,14 +46,12 @@ The dataset provided comprises of `r nrow(data)` observations and `r ncol(data)`
 - **Monat and Jahr**: Time indicators that help in time series forecasting.
 - **Value**: Represents the counted overnight stays, serving as the primary metric for our forecasts.
 
-Below is a random sample snapshot of the data to provide a tangible sense of the data structure:
-```{r, echo = FALSE, message = FALSE, warning=FALSE}
-# Display a sample of the data
-kable(sample_n(data, 5))
-```
+_In the appendix a random sample snapshot of the data can be found to provide a tangible sense of the data structure:_
 
 ## Processing Data
+
 For part a) of the project, we focused on the Canton of Vaud, filtering the data for all overnight stays in this region. The inclusion of "Herkunftsland - Total" in the `Herkunftsland` column helped with the filtering as it provided a monthly total of visitors of all nationalities. We therefore filtered on the columns of `Kanton` and `Herkunftsland`. The data was then converted into a time series format, with the `Date` column created by combining the `Monat` and `Jahr` columns. This transformation enabled us to visualize trends and seasonality in the data, providing a foundation for our forecasting models.
+
 <details>
 ```r
 # Filter data for Vaud
@@ -68,6 +66,7 @@ vaud_data <- vaud_data |>
 </details>
 
 For part b) of the project, we focused on Luzern and Japanese visitors. filtering the data to isolate overnight stays by Japanese tourists in this region. "Japan" is a country value in the `Herkunftsland` column and therefore could be selected for filtering. Similar to part a), the data was converted into a time series format, with the `Date` column once again created by combining the `Monat` and `Jahr` columns. This transformation allowed us to explore specific trends and patterns related to Japanese visitors in Luzern.
+
 <details>
 ```r
 # Filter data for Luzern
@@ -100,7 +99,6 @@ The analysis of the data involved visualizing the trends and seasonality in over
 filtered_df <- data %>%
   filter(Herkunftsland == "Japan", Kanton == "Luzern")
 
-
 month_map <- c(Januar = "01", Februar = "02", März = "03", April = "04", Mai = "05", Juni = "06", 
                Juli = "07", August = "08", September = "09", Oktober = "10", November = "11", Dezember = "12")
 
@@ -109,8 +107,7 @@ filtered_df$Monat_num <- as.numeric(sapply(filtered_df$Monat, function(x) month_
 filtered_df$Date <- as.Date(paste(filtered_df$Jahr, filtered_df$Monat_num, "1", sep="-"), "%Y-%m-%d")
 
 filtered_df_2 <- data %>%
-  filter(Kanton == "Vaud") %>%
-  na.omit()
+  filter(Kanton == "Vaud")
 
 month_map <- c(Januar = "01", Februar = "02", März = "03", April = "04", Mai = "05", Juni = "06", 
                Juli = "07", August = "08", September = "09", Oktober = "10", November = "11", Dezember = "12")
@@ -127,7 +124,7 @@ combined_df <- bind_rows(
 # Plot using ggplot2 with facet_wrap
 ggplot(data = combined_df, aes(x = Date, y = value)) +
   geom_line(color = "#2C3E50", size = 1) +  
-  geom_point(color = "#E74C3C", size = 2, alpha = 0.7) +  
+  geom_point(color = "#E74C3C", size = 0.2, alpha = 0.7) +  
   scale_x_date(labels = date_format("%Y-%b"), breaks = "6 month") + 
   scale_y_continuous(labels = comma) + 
   labs(title = "Monthly Overnight Stays Over the Years",
@@ -140,7 +137,7 @@ ggplot(data = combined_df, aes(x = Date, y = value)) +
     axis.title.x = element_text(vjust = -0.2),
     axis.title.y = element_text(vjust = 1.5),
     panel.grid.minor = element_blank(),
-    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 4),
     legend.position = "none"  
   ) +
   facet_wrap(~Region, scales = "free_y")  # Faceting by region
@@ -174,17 +171,76 @@ These models were chosen to address the specific challenges presented by the dat
 
 ## ETS Model
 
-## ARIMA
+A gridsearch approach was used to identify the optimal ETS model for forecasting overnight stays in the cantons of Vaud and Luzern. The model selection process involved comparing the AIC values of different ETS models with varying error structures (additive (A), multiplicative (M)), trend structures (A, M, None (N)) and season components (A, M, N). The final ETS model was chosen based on the lowest AIC value, indicating the best fit to the data.
+
+**VAUD Best ETS Model: ETS(A, N, A)**
+**LUZERN Best ETS Model: ETS(M, N, M)**
+
+## ARIMA & ARIMA with Dynamic Regression
+
+A stepwise approach was used to identify the optimal ARIMA model for forecasting overnight stays in the cantons of Vaud and Luzern. The model selection process involved identifying the optimal p, d, q, and PDQ parameters for the ARIMA model based on the AIC values. The final ARIMA model was chosen based on the lowest AIC value, indicating the best fit to the data.
+
+**VAUD Best ARIMA Model: ARIMA(1,0,1)(2,1,2)[12]**
+
+_Non-seasonal part: 1 autoregressive term, no differencing, and 1 moving average term. Seasonal part: 2 seasonal autoregressive terms, 1 order of seasonal differencing, and 2 seasonal moving average terms, all based on a yearly cycle (12 months)._
+
+**LUZERN Best ARIMA Model: ARIMA(1,0,0)(2,1,1)[12] w/ drift**
+
+_Non-seasonal part: 1 autoregressive term, no differencing, and no moving average terms. Seasonal part: 2 seasonal autoregressive terms, 1 order of seasonal differencing, and 1 seasonal moving average term, also based on a yearly cycle, with a linear trend (drift) over time._
+
+For the ARIMA with Dynamic Regression model, we took the best ARIMA model for each of the cantons and added exogenous variables, a dummy variable for **Covid** was added to both, and the **exchange rate** between the Japanese Yen and Swiss Franc (JPY/CHF) was also added to Luzern's ARIMA.
 
 ## TSLM
 
+For TSLM a model was created for Luzern that included the exchange rate between the Japanese Yen and Swiss Franc (JPY/CHF) and a Covid dummy. The model was created using the following formula:
+
+$$
+value = JPY + covid + trend + season
+$$
+
 ## Model Selection
 
+The model selection process involved evaluating three key metrics listed below for each model. The chosen models demonstrated the lowest metric values and exhibited the most understandable and visual forecast.
+
+1. **AIC (Akaike Information Criterion)**: The AIC is a measure of the relative quality of a statistical model for a given set of data. It balances the complexity of the model against how well the model fits the data, penalizing excessive complexity to prevent overfitting.
+2. **MAE (Mean Absolute Error)**: MAE quantifies the average magnitude of the errors in a set of predictions, without considering their direction. It's a straightforward metric that provides a quick indication of predictive accuracy at the individual level.
+3. **MASE (Mean Absolute Scaled Error)**: MASE measures the accuracy of forecasts relative to a naive benchmark prediction, typically the naïve seasonal model. This scaling makes it an excellent choice for comparing forecast performance across different data scales and is particularly useful when dealing with seasonal variations.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}  
+# load Metrics.R
+source(here("Project 1", "Scripts", "Metrics.R"))
+kable(metrics_vaud)
+```
+
+For Vaud, the ARIMA with Dynamic Regression variable of a Covid dummy was selected as the best model based on the AIC, MAE, and MASE metrics.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}  
+kable(metrics_luzern)
+```
+
+For Luzern, the results are not so clear, the ARIMA with Dynamic Regression variable of a Covid dummy and the exchange rate between the Japanese Yen and Swiss Franc (JPY/CHF) has the lowest AIC. However, the ARIMA with Dynamic Regression variable of a Covid dummy has the lowest MAE and MASE.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+```
 # Results
 
+## Vaud
+
+The ARIMA with Dynamic Regression model for Vaud forecasts a steady increase in overnight stays, with a strong recovery since the impact of Covid. The model captures the seasonal fluctuations and the overall upward trend in tourist visits, providing valuable insights for tourism management in Vaud.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+```
 # Conclusion
 
 # Appendix
+
+## Data Sample
+```{r, echo = FALSE, message = FALSE, warning=FALSE}
+# Display a sample of the data
+kable(sample_n(data, 5))
+```
+
 ## Links
 - [Data Source - chf/jpy](https://www.investing.com/currencies/chf-jpy-historical-data)
-- [Code Repository]()
+- [Code Repository](https://github.com/faberunil/Forecasting-II)

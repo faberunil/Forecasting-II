@@ -75,7 +75,7 @@ currency_filts <- currency_ts |>
 ts_combined <- ts_luz %>%
   left_join(currency_filts, by = "Date") %>%
   as_tsibble(index = Date)
-"
+
 # Determine start time for the ts object
 start_year <- year(min(ts_combined$Date))
 start_month <- month(min(ts_combined$Date))
@@ -96,38 +96,16 @@ covid <- ts(c(rep(0, max(0, start_covid - 1)),
               rep(1, max(0, end_covid - start_covid + 1)), 
               rep(0, total_length - end_covid)),
             start = c(start_year, start_month), frequency = 12)
-"
 
 # Fit a TSLM model
-model_fit <- tslm(value ~ JPY + trend + season, data = ts_combined)
+model_fit <- tslm(value ~ JPY + covid + trend + season, data = ts_combined)
 
 # Check model summary and diagnostics
 summary(model_fit)
-accuracy(model_fit)
-
-# create a tsibble with all JPY values and all known value values, if there arent known values, fill with NA
-ts_combined_full <- full_currency_forecast |>
-  left_join(ts_luz, by = "Date") |>
-  select(Date, value, JPY) |>
-  as_tsibble(index = Date)
-
-# add the covid dummy to the ts_combined_full and fill in values all unknown are filled with 0
-ts_combined_full <- ts_combined_full |>
-  mutate(covid = 0)
-
-# reorder so JPY is second after date which is the index
-ts_combined_full <- ts_combined_full |>
-  select(Date, JPY, value, covid)
-
-# remove first data point
-ts_combined_full <- ts_combined_full[-1,]
-
-# Ensure the Date column is treated as a Date object
-ts_combined_full <- ts_combined_full %>%
-  mutate(Date = as.Date(Date))
+TSLMaccuracy <- accuracy(model_fit)
 
 # predict the values for the unknown values
-predictions <- forecast(model_fit, new_data = ts_combined_full)
+predictions <- forecast(model_fit, new_data = full_currency_forecast)
 
 # Plot the results
 autoplot(ts_combined_full, value) +
@@ -139,9 +117,15 @@ autoplot(ts_combined_full, value) +
   guides(colour = guide_legend(title = "Legend")) +
   theme(legend.position = "bottom")
 
-# Model summary and diagnostics
-summary(model_fit)
-accuracy(model_fit)
-
 # AIC can be a useful measure if applicable in your modeling context
 AIC(model_fit)
+
+# make a mini df with TSLM AIC, ME, MASE
+metricsTSLM_df <- data.frame(
+  Model = "TSLM Luzern",
+  AIC = AIC(model_fit),      
+  MAE = TSLMaccuracy[3],   
+  MASE = TSLMaccuracy[6]
+)
+print(metricsTSLM_df)
+save(metricsTSLM_df, file = "Project 1/Data/metricsTSLM_df.rdata")

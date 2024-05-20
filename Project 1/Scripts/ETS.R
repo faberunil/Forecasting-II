@@ -11,7 +11,6 @@ library(fabletools)
 # Read the data using a path relative to the project root including the 'Project 2' folder
 data <- read_excel(here("Project 1", "Data", "Dataset_tourism.xlsx"))
 
-
 ##############
 #### Vaud ####
 ##############
@@ -22,7 +21,6 @@ data <- read_excel(here("Project 1", "Data", "Dataset_tourism.xlsx"))
 # Filter data for Vaud
 vaud_data <- data |>
   filter(Kanton == "Vaud", Herkunftsland == "Herkunftsland - Total")
-
 
 # Create a tsibble
 month_conversion <- c("Januar" = "1", "Februar" = "2", "März" = "3", "April" = "4", 
@@ -64,9 +62,10 @@ autoplot(ts_vaud) +
 vaud_fit |> gg_tsresiduals(lag_max = "3 years")
 
 # Check the accuracy of the model
-accuracy(AAA_vaud_fit)
+accuracy(ANA_vaud_fit)
 
-check_residuals(AAA_vaud_fit)
+summary_ANA_vaud <- glance(ANA_vaud_fit)
+print(summary_ANA_vaud)
 
 #################
 #ETS Grid Search#
@@ -105,6 +104,7 @@ best_model_vd <- model_summaries_vd$model[[best_model_index_vd]]  # Extract mode
 
 # Print the best model
 print(best_model_vd)
+
 # Now forecast using the best model
 best_forecast_vd <- forecast(best_model_vd, h = 12)# Forecast with the best model
 best_forecast_vd <- best_model_vd |>
@@ -118,8 +118,6 @@ autoplot(best_forecast_vd) +
 #################
 #### Luzern ####
 #################
-
-
 # Filter data for Vaud
 Luzern_data <- data |>
   filter(Kanton == "Luzern", Herkunftsland == "Japan")
@@ -133,7 +131,7 @@ ts_luz <- Luzern_data |>
 models_lz <- components |>
   mutate(model = pmap(list(error, trend, season), function(e, t, s) {
     cat("Fitting model with error:", e, "trend:", t, "season:", s, "\n")  # Debug output
-    ts_vaud |> 
+    ts_luz |> 
       model(ETS(value ~ error(e) + trend(t) + season(s)))
   }))
 
@@ -168,20 +166,20 @@ autoplot(best_forecast_lz) +
 
 # Fitting the ETS model
 lz_fit <- ts_luz |> model(ETS(value))
-ANA_lz_fit <- ts_luz |> model(ETS(value ~ error("A") + trend("N") + season("A")))
+MNM_lz_fit <- ts_luz |> model(ETS(value ~ error("M") + trend("N") + season("M")))
 
-report(ANA_lz_fit)
+report(MNM_lz_fit)
 
 # Plot the forecast for the next 15 months
-ANA_lz_fit |> forecast(h = 15) |> autoplot(ts_luz)
+MNM_lz_fit |> forecast(h = 15) |> autoplot(ts_luz)
 
-ANA_lz_forecast <- ANA_lz_fit |> forecast(h = 15)
+MNM_lz_forecast <- MNM_lz_fit |> forecast(h = 15)
 # Print the forecasted values
-print(ANA_lz_forecast)
+print(MNM_lz_forecast)
 
 # Optionally, if you want to see a detailed DataFrame of the forecast:
-ANA_lz_df <- as.data.frame(ANA_lz_fit)
-print(ANA_lz_df)
+MNM_lz_df <- as.data.frame(MNM_lz_fit)
+print(MNM_lz_df)
 
 # Plot the forecast for visual inspection
 autoplot(ts_luz) +
@@ -194,4 +192,48 @@ autoplot(ts_luz) +
 lz_fit |> gg_tsresiduals(lag_max = "3 years")
 
 # Check the accuracy of the model
-accuracy(ANA_lz_fit)
+accuracy(MNM_lz_fit)
+
+##################################################################################
+#### metrics ######################################################################
+##################################################################################
+
+# Calculate AIC, ME, and MASE for the best ETS model for Vaud
+accuracy_vdETS <- accuracy(ANA_vaud_fit)
+aic_vdETS <- summary_ANA_vaud$AIC
+mae_vdETS <- accuracy_vdETS$MAE
+mase_vdETS <- accuracy_vdETS$MASE
+
+# Calculate AIC, ME, and MASE for the best ETS model for Luzern
+summary_MNM_lz <- glance(MNM_lz_fit)
+accuracy_lzETS <- accuracy(MNM_lz_fit)
+aic_lzETS <- summary_MNM_lz$AIC
+mae_lzETS <- accuracy_lzETS$MAE
+mase_lzETS <- accuracy_lzETS$MASE
+
+# Calculate AIC, ME, and MASE for the best  model for Vaud
+summary_best_vd <- glance(best_model_vd)
+accuracy_best_vd <- accuracy(best_model_vd)
+aic_best_vd <- summary_best_vd$AIC
+mae_best_vd <- accuracy_best_vd$MAE
+mase_best_vd <- accuracy_best_vd$MASE
+
+# Calculate AIC, ME, and MASE for the best  model for Luzern
+summary_best_lz <- glance(best_model_lz)
+accuracy_best_lz <- accuracy(best_model_lz)
+aic_best_lz <- summary_best_lz$AIC
+mae_best_lz <- accuracy_best_lz$MAE
+mase_best_lz <- accuracy_best_lz$MASE
+
+# Create a summary table for the metrics
+metricsETS_df <- data.frame(
+  Model = c("ANA Vaud", "MNM Luzern"),
+  AIC = c(aic_vdETS, aic_lzETS),
+  MAE = c(mae_vdETS, mae_lzETS),
+  MASE = c(mase_vdETS, mase_lzETS)
+)
+
+print(metricsETS_df)
+
+# save the metrics to a rdata df
+save(metricsETS_df, file = "Project 1/Data/metricsETS_df.rdata")
