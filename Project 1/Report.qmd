@@ -30,7 +30,7 @@ data <- read_excel(here("Project 1", "Data", "Dataset_tourism.xlsx"))
 
 # Introduction
 
-The Swiss tourism industry plays a crucial role in the national economy, with regions like Vaud and Luzern attracting significant numbers of visitors due to their unique attractions and cultural significance. Accurate forecasting of overnight stays is vital for effective economic planning, resource management, and strategic marketing. This report undertakes a dual approach to forecasting, addressing both the general demand for accommodation in Vaud and the specific trends concerning visitors from Japan in Luzern.
+The Swiss tourism industry plays a crucial role in the national economy, with regions like Vaud and Luzern attracting significant numbers of visitors due to their unique attractions and cultural significance. Accurate forecasting of overnight stays is helpful for effective economic planning, resource management, and strategic marketing. This report undertakes a dual approach to forecasting, addressing both the general demand for accommodation in Vaud and the specific trends concerning visitors from Japan in Luzern.
 
 Part a) of the project focuses on predicting the total number of overnight stays in the canton of Vaud. This analysis aims to provide a broad understanding of tourism dynamics and assist local stakeholders in planning and decision-making processes. Part b) delves into a more detailed prediction for Luzern, focusing on overnight stays by Japanese tourists, a demographic that presents unique challenges due to specific preferences and travel behaviors.
 
@@ -39,14 +39,14 @@ Through the application of various forecasting models this project not only aims
 # Data
 ## Description
 
-The dataset provided comprises of `r nrow(data)` observations and `r ncol(data)`, detailing overnight stays across various cantons spanning from `r min(data$Jahr)` to `r max(data$Jahr)`. The dataset includes information from `r length(unique(data$Kanton))` different cantons and `r length(unique(data$Herkunftsland))-1` countries of origin. The columns, which include `r paste(colnames(data), collapse=", ")`, provide a comprehensive view of tourist overnight stays in Switzerland. Here are the roles and significance of each column:
+The dataset provided comprises of `r nrow(data)` observations and `r ncol(data)` columns, detailing overnight stays across various cantons spanning from `r min(data$Jahr)` to `r max(data$Jahr)`. The dataset includes information from `r length(unique(data$Kanton))` different cantons and `r length(unique(data$Herkunftsland))-1` countries of origin. The columns, which include `r paste(colnames(data), collapse=", ")`, provide a comprehensive view of tourist overnight stays in Switzerland. Here are the roles and significance of each column:
 
 - **Herkunftsland**: Identifies the visitor's country of origin, critical for understanding international tourism trends.
 - **Kanton**: Indicates the canton where the stays were recorded, essential for regional analysis.
 - **Monat and Jahr**: Time indicators that help in time series forecasting.
 - **Value**: Represents the counted overnight stays, serving as the primary metric for our forecasts.
 
-_In the appendix a random sample snapshot of the data can be found to provide a tangible sense of the data structure:_
+_In the appendix a random sample snapshot of the data can be found to provide a tangible sense of the data structure._
 
 ## Processing Data
 
